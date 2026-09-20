@@ -1,0 +1,51 @@
+# LaTablée — one compose file, sensible volumes, first-run bootstrapping.
+# Default: SQLite volume. Postgres profile: docker compose --profile postgres up -d
+services:
+  api:
+    build: .
+    image: latablee-api
+    environment:
+      - LATABLEE_SECRET_KEY=${LATABLEE_SECRET_KEY:?set LATABLEE_SECRET_KEY in .env}
+      - LATABLEE_DATABASE_URL=${LATABLEE_DATABASE_URL:-sqlite:///./data/latablee.db}
+      - LATABLEE_CORS_ORIGINS=${LATABLEE_CORS_ORIGINS:-http://localhost:3000}
+      - LATABLEE_PUBLIC_ORIGIN=${LATABLEE_PUBLIC_ORIGIN:-http://localhost:3000}
+      # Optional: preconfigure the LLM here instead of via UI Settings
+      - LATABLEE_LLM_BASE_URL=${LATABLEE_LLM_BASE_URL:-}
+      - LATABLEE_LLM_API_KEY=${LATABLEE_LLM_API_KEY:-}
+      - LATABLEE_LLM_MODEL=${LATABLEE_LLM_MODEL:-}
+    volumes:
+      - latablee-data:/srv/latablee/data
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        # Serve under a subpath if you proxy at e.g. /latablee (HA ingress later)
+        NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-}
+    image: latablee-web
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+    depends_on:
+      - api
+
+  # Optional Postgres — activates with: docker compose --profile postgres up -d
+  # then set LATABLEE_DATABASE_URL=postgresql://latablee:posablee@db:5432/latablee in your dotenv file
+  db:
+    image: postgres:16-alpine
+    profiles: ["postgres"]
+    environment:
+      - POSTGRES_USER=latablee
+      - POSTGRES_PASSWORD=posablee
+      - POSTGRES_DB=latablee
+    volumes:
+      - latablee-pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  latablee-data:
+  latablee-pgdata:

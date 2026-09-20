@@ -1,0 +1,232 @@
+{
+  "recipes": [
+    {
+      "title": "Weeknight Tacos",
+      "description": "Fast ground-beef tacos the whole table actually eats.",
+      "servings": 4, "prep_minutes": 10, "cook_minutes": 20,
+      "tags": ["mexican", "weeknight", "beef"],
+      "ingredients": [
+        {"name": "ground beef", "quantity": 500, "unit": "gram"},
+        {"name": "taco shells", "quantity": 8, "unit": "piece"},
+        {"name": "cheddar cheese", "quantity": 150, "unit": "gram"},
+        {"name": "romaine lettuce", "quantity": 1, "unit": "piece"},
+        {"name": "salsa", "quantity": 200, "unit": "gram"},
+        {"name": "sour cream", "quantity": 150, "unit": "gram"}
+      ],
+      "instructions": [
+        "Brown the beef in a skillet over medium-high heat, 8 minutes.",
+        "Season with taco spice and a splash of water; simmer 5 minutes.",
+        "Warm the shells in the oven for 3 minutes.",
+        "Set out fillings and let everyone build their own."
+      ]
+    },
+    {
+      "title": "Tomato Basil Pasta",
+      "description": "Fifteen-minute pasta with blistered cherry tomatoes.",
+      "servings": 4, "prep_minutes": 5, "cook_minutes": 15,
+      "tags": ["pasta", "vegetarian", "weeknight"],
+      "ingredients": [
+        {"name": "spaghetti", "quantity": 400, "unit": "gram"},
+        {"name": "cherry tomatoes", "quantity": 500, "unit": "gram"},
+        {"name": "garlic cloves", "quantity": 3, "unit": "clove"},
+        {"name": "basil leaves", "quantity": 20, "unit": "gram"},
+        {"name": "olive oil", "quantity": 3, "unit": "tablespoon"},
+        {"name": "parmesan", "quantity": 60, "unit": "gram"}
+      ],
+      "instructions": [
+        "Boil salted water; cook spaghetti al dente.",
+        "Sizzle garlic in olive oil; add tomatoes until they burst, 6 minutes.",
+        "Toss pasta with tomatoes and torn basil; finish with parmesan."
+      ]
+    },
+    {
+      "title": "Sheet-Pan Chicken Thighs",
+      "description": "Crispy thighs, potatoes and green beans on one tray.",
+      "servings": 4, "prep_minutes": 10, "cook_minutes": 40,
+      "tags": ["chicken", "one-pan", "weeknight"],
+      "ingredients": [
+        {"name": "chicken thighs", "quantity": 8, "unit": "piece"},
+        {"name": "baby potatoes", "quantity": 700, "unit": "gram"},
+        {"name": "green beans", "quantity": 300, "unit": "gram"},
+        {"name": "olive oil", "quantity": 2, "unit": "tablespoon"},
+        {"name": "lemon", "quantity": 1, "unit": "piece"},
+        {"name": "thyme", "quantity": 5, "unit": "gram"}
+      ],
+      "instructions": [
+        "Heat oven to 220°C.",
+        "Toss potatoes with oil; roast 15 minutes.",
+        "Add chicken and beans; roast 25 minutes until skin is crisp.",
+        "Squeeze lemon over everything."
+      ]
+    },
+    {
+      "title": "Breakfast Burritos",
+      "description": "Eggs, potato and cheese rolled and pan-crisped.",
+      "servings": 4, "prep_minutes": 15, "cook_minutes": 15,
+      "tags": ["breakfast", "eggs", "freezer-friendly"],
+      "ingredients": [
+        {"name": "flour tortillas", "quantity": 4, "unit": "piece"},
+        {"name": "eggs", "quantity": 8, "unit": "piece"},
+        {"name": "potato", "quantity": 2, "unit": "piece"},
+        {"name": "monterey jack", "quantity": 120, "unit": "gram"},
+        {"name": "butter", "quantity": 30, "unit": "gram"}
+      ],
+      "instructions": [
+        "Diced potatoes in butter until golden, 10 minutes.",
+        "Scramble eggs soft; season well.",
+        "Fill tortillas, roll tight, crisp seam-down in the pan."
+      ]
+    },
+    {
+      "title": "Lentil Soup",
+      "description": "Lemony red-lentil soup; cheap, fast, freezer-friendly.",
+      "servings": 6, "prep_minutes": 10, "cook_minutes": 30,
+      "tags": ["soup", "vegetarian", "budget"],
+      "ingredients": [
+        {"name": "red lentils", "quantity": 300, "unit": "gram"},
+        {"name": "onion", "quantity": 1, "unit": "piece"},
+        {"name": "carrots", "quantity": 2, "unit": "piece"},
+        {"name": "cumin", "quantity": 2, "unit": "teaspoon"},
+        {"name": "lemon", "quantity": 1, "unit": "piece"},
+        {"name": "vegetable stock", "quantity": 1.5, "unit": "liter"}
+      ],
+      "instructions": [
+        "Soften onion and carrot in olive oil, 8 minutes.",
+        "Add lentils, cumin and stock; simmer 25 minutes.",
+        "Blend half the pot for body; finish with lemon juice."
+      ]
+    },
+    {
+      "title": "Pan Pizza",
+      "description": "Cast-iron pan pizza, chewy middle, crispy edge.",
+      "servings": 4, "prep_minutes": 20, "cook_minutes": 25,
+      "tags": ["pizza", "weekend", "kids"],
+      "ingredients": [
+        {"name": "bread flour", "quantity": 400, "unit": "gram"},
+        {"name": "mozzarella", "quantity": 250, "unit": "gram"},
+        {"name": "tomato sauce", "quantity": 200, "unit": "gram"},
+        {"name": "olive oil", "quantity": 2, "unit": "tablespoon"},
+        {"name": "instant yeast", "quantity": 4, "unit": "gram"}
+      ],
+      "instructions": [
+        "Mix dough; rest 2 hours at room temp.",
+        "Press into oiled cast-iron pan; rest 20 minutes.",
+        "Top and bake at 250°C for 12 minutes."
+      ]
+    },
+    {
+      "title": "Salmon Rice Bowl",
+      "description": "Crispy salmon over rice with quick cucumber.",
+      "servings": 2, "prep_minutes": 10, "cook_minutes": 15,
+      "tags": ["fish", "weeknight", "bowl"],
+      "ingredients": [
+        {"name": "salmon fillet", "quantity": 300, "unit": "gram"},
+        {"name": "sushi rice", "quantity": 250, "unit": "gram"},
+        {"name": "cucumber", "quantity": 1, "unit": "piece"},
+        {"name": "rice vinegar", "quantity": 2, "unit": "tablespoon"},
+        {"name": "soy sauce", "quantity": 2, "unit": "tablespoon"},
+        {"name": "sriracha", "quantity": 1, "unit": "tablespoon"}
+      ],
+      "instructions": [
+        "Cook rice; season with vinegar.",
+        "Sear salmon skin-side down 6 minutes; flip 2 minutes.",
+        "Flake over rice with cucumber and sauces."
+      ]
+    },
+    {
+      "title": "Greek Salad + Pita",
+      "description": "No-cook summer dinner with warm pita.",
+      "servings": 4, "prep_minutes": 15, "cook_minutes": 0,
+      "tags": ["salad", "vegetarian", "summer"],
+      "ingredients": [
+        {"name": "cucumber", "quantity": 2, "unit": "piece"},
+        {"name": "tomatoes", "quantity": 4, "unit": "piece"},
+        {"name": "red onion", "quantity": 0.5, "unit": "piece"},
+        {"name": "feta", "quantity": 200, "unit": "gram"},
+        {"name": "pita bread", "quantity": 4, "unit": "piece"},
+        {"name": "olive oil", "quantity": 3, "unit": "tablespoon"}
+      ],
+      "instructions": [
+        "Chop vegetables roughly; dress with oil and oregano.",
+        "Crumble feta on top; warm pita in a dry pan.",
+        "Serve pita alongside for scooping."
+      ]
+    },
+    {
+      "title": "Beef Chili",
+      "description": "Weeknight chili; the beans are not negotiable.",
+      "servings": 6, "prep_minutes": 15, "cook_minutes": 45,
+      "tags": ["beef", "batch-cook", "freezer-friendly"],
+      "ingredients": [
+        {"name": "ground beef", "quantity": 700, "unit": "gram"},
+        {"name": "kidney beans", "quantity": 400, "unit": "gram"},
+        {"name": "crushed tomatoes", "quantity": 800, "unit": "gram"},
+        {"name": "onion", "quantity": 1, "unit": "piece"},
+        {"name": "chili powder", "quantity": 2, "unit": "tablespoon"},
+        {"name": "cheddar", "quantity": 100, "unit": "gram"}
+      ],
+      "instructions": [
+        "Brown beef and onion, 10 minutes.",
+        "Add chili powder, tomatoes, beans; simmer 35 minutes.",
+        "Serve with cheese (never olives)."
+      ]
+    },
+    {
+      "title": "Mushroom Risotto",
+      "description": "Stirred-with-love risotto; good for a slow evening.",
+      "servings": 4, "prep_minutes": 10, "cook_minutes": 35,
+      "tags": ["rice", "vegetarian", "weekend"],
+      "ingredients": [
+        {"name": "arborio rice", "quantity": 300, "unit": "gram"},
+        {"name": "mixed mushrooms", "quantity": 400, "unit": "gram"},
+        {"name": "vegetable stock", "quantity": 1.2, "unit": "liter"},
+        {"name": "white wine", "quantity": 150, "unit": "milliliter"},
+        {"name": "parmesan", "quantity": 80, "unit": "gram"},
+        {"name": "butter", "quantity": 50, "unit": "gram"}
+      ],
+      "instructions": [
+        "Brown mushrooms in half the butter; set aside.",
+        "Toast rice; deglaze with wine.",
+        "Add hot stock a ladle at a time, stirring, 20 minutes.",
+        "Fold in mushrooms, parmesan, remaining butter."
+      ]
+    },
+    {
+      "title": "Stir-Fry Noodles",
+      "description": "Whatever-vegetables stir-fry with udon.",
+      "servings": 4, "prep_minutes": 10, "cook_minutes": 10,
+      "tags": ["noodles", "weeknight", "vegetarian"],
+      "ingredients": [
+        {"name": "udon noodles", "quantity": 400, "unit": "gram"},
+        {"name": "bell pepper", "quantity": 2, "unit": "piece"},
+        {"name": "broccoli", "quantity": 300, "unit": "gram"},
+        {"name": "soy sauce", "quantity": 4, "unit": "tablespoon"},
+        {"name": "sesame oil", "quantity": 1, "unit": "tablespoon"},
+        {"name": "ginger", "quantity": 20, "unit": "gram"}
+      ],
+      "instructions": [
+        "Stir-fry hard vegetables 3 minutes over high heat.",
+        "Add noodles, soy, ginger, a splash of water; toss 3 minutes.",
+        "Finish with sesame oil."
+      ]
+    },
+    {
+      "title": "Chocolate Mug Cake",
+      "description": "Two-minute dessert for the kids' win column.",
+      "servings": 1, "prep_minutes": 3, "cook_minutes": 2,
+      "tags": ["dessert", "kids", "fast"],
+      "ingredients": [
+        {"name": "flour", "quantity": 40, "unit": "gram"},
+        {"name": "cocoa", "quantity": 20, "unit": "gram"},
+        {"name": "sugar", "quantity": 40, "unit": "gram"},
+        {"name": "milk", "quantity": 60, "unit": "milliliter"},
+        {"name": "oil", "quantity": 2, "unit": "tablespoon"}
+      ],
+      "instructions": [
+        "Whisk dry ingredients in the mug.",
+        "Stir in milk and oil until smooth.",
+        "Microwave 90 seconds; do not overcook."
+      ]
+    }
+  ]
+}

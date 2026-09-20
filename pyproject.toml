@@ -1,0 +1,72 @@
+[project]
+name = "latablee"
+version = "0.1.0"
+description = "LaTablée — self-hosted recipe & meal planning for the whole table"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "AGPL-3.0-or-later"
+authors = [{ name = "LaTablée contributors" }]
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "sqlmodel>=0.0.22",
+  "psycopg[binary]>=3.2 ; platform_system != 'Windows'",
+  "httpx>=0.27",
+  "pydantic-settings>=2.4",
+  "argon2-cffi>=23.1",
+  "pyjwt>=2.9",
+  "python-multipart>=0.0.9",
+  "beautifulsoup4>=4.12",
+  "lxml>=5.2",
+  "extruct>=0.18",
+  "orjson>=3.10",
+  "apscheduler>=3.10",
+  "Pillow>=10.4",
+  "Pint>=0.24",
+  "rapidfuzz>=3.9",
+  "openapi-core>=0.19",
+  "openapi-spec-validator>=0.7",
+]
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3",
+  "pytest-asyncio>=0.23",
+  "ruff>=0.6",
+  "mypy>=1.11",
+  "types-beautifulsoup4>=4.12",
+  "pre-commit>=3.8",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "S", "T20", "S105", "S106", "S107"]
+ignore = ["E501", "B008"]  # B008 = FastAPI Depends-in-defaults idiom
+# S (bandit-style) enabled; T20 (print) blocked, logger instead.
+
+[tool.ruff.lint.per-file-ignores]
+"backend/tests/**" = ["S", "T20", "E501"]
+"backend/app/seed.py" = ["T20", "S106", "S107"]  # CLI tool: prints; demo password default
+"backend/app/__main__.py" = ["S104"]  # containerized server binds 0.0.0.0 by design
+"backend/app/core/config.py" = ["S105"]  # placeholder default; real key via env only
+"backend/app/api/v1/lists.py" = ["S101"]  # assert = type-narrowing for Optional household
+"backend/app/api/v1/voice.py" = ["S101"]
+"backend/app/db/engine.py" = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+addopts = "-q"
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["backend/app"]
+omit = ["backend/app/__main__.py"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend/app"]

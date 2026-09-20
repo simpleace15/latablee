@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/next-env.d.ts
+
+# LaTablée runtime data (DB, images, exports) — lives on a Docker volume in prod
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# Secrets — real values only via env vars/dotenv, never committed
+.env*
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db

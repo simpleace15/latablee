@@ -28,3 +28,5 @@ data/
 # OS / editor
 .DS_Store
 Thumbs.db
+# ui-ux-pro-max: design-time tooling, stays local (not part of the app)
+.claude/

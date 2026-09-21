@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, type ShoppingList } from "@/lib/api";
+import { drainOutbox, enqueue, isOnline, outboxCount } from "@/lib/outbox";
 import { Button, Card, EmptyState, Input, Spinner } from "@/components/ui";
 import AppLayout from "../AppLayout";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -14,6 +15,7 @@ export default function ListPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [pendingDelete, setPendingDelete] = useState<{ listId: number; itemId: number; name: string } | null>(null);
+  const [queued, setQueued] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -32,25 +34,77 @@ export default function ListPage() {
     void load();
   }, [load]);
 
+  // Drain queued check-offs when we come back online (page load, tab focus, or the
+  // browser's online event fires). Fresh data loads right after the queue empties.
+  useEffect(() => {
+    let cancelled = false;
+    async function tryDrain() {
+      if (!isOnline() || outboxCount() === 0) return;
+      const { failed } = await drainOutbox(api);
+      if (cancelled) return;
+      setQueued(outboxCount());
+      if (failed === 0) void load();
+    }
+    void tryDrain();
+    window.addEventListener("online", tryDrain);
+    window.addEventListener("focus", tryDrain);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("online", tryDrain);
+      window.removeEventListener("focus", tryDrain);
+    };
+  }, [load]);
+
   async function addItem(e: React.FormEvent) {
     e.preventDefault();
     const lst = lists[0];
     if (!lst || !newItem.trim()) return;
     setBusy(true);
+    if (!isOnline()) {
+      enqueue({ kind: "add", listId: lst.id, name: newItem.trim() });
+      setNewItem("");
+      setQueued(outboxCount());
+      setBusy(false);
+      return;
+    }
     try {
       await api.addListItem(lst.id, newItem.trim());
       setNewItem("");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't add");
+      if (err instanceof Error && (err.message.includes("fetch") || err.message.includes("Failed"))) {
+        enqueue({ kind: "add", listId: lst.id, name: newItem.trim() });
+        setNewItem("");
+        setQueued(outboxCount());
+      } else {
+        setError(err instanceof Error ? err.message : "Couldn't add");
+      }
     } finally {
       setBusy(false);
     }
   }
 
   async function toggle(listId: number, itemId: number, done: boolean) {
-    await api.checkListItem(listId, itemId, done);
-    await load();
+    // optimistic flip first — the aisle can't wait on a network round-trip
+    setLists((cur) =>
+      cur.map((l) =>
+        l.id === listId
+          ? { ...l, items: l.items.map((i) => (i.id === itemId ? { ...i, done } : i)) }
+          : l,
+      ),
+    );
+    if (!isOnline()) {
+      enqueue({ kind: "check", listId, itemId, done });
+      setQueued(outboxCount());
+      return;
+    }
+    try {
+      await api.checkListItem(listId, itemId, done);
+    } catch {
+      // network blip mid-request: keep the optimistic state, queue for retry
+      enqueue({ kind: "check", listId, itemId, done });
+      setQueued(outboxCount());
+    }
   }
 
   async function removeItem() {
@@ -93,6 +147,11 @@ export default function ListPage() {
       </header>
 
       {error && <p className="mb-3 text-sm font-semibold" style={{ color: "var(--color-destructive)" }}>{error}</p>}
+      {queued > 0 && (
+        <p className="mb-3 rounded-[12px] px-3 py-2 text-sm font-semibold" style={{ background: "var(--color-muted)", color: "var(--color-muted-foreground)" }}>
+          {queued} change{queued === 1 ? "" : "s"} saved offline — will sync automatically when you're back online.
+        </p>
+      )}
 
       {!lst ? (
         <EmptyState

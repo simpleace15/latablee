@@ -3,6 +3,22 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.2.0] — 2026-09-20
+
+### Added
+- **Next.js PWA frontend** (static export, nginx-served): Today (dinner-tonight +
+  list summary), Plan (weekly b/l/d slots, add-entry sheet, week nav), Recipes
+  (search + tag chips, detail with servings scaling, **cook mode** with 22px steps
+  and tap-advance), shopping list (check-off, fill-from-plan), Settings
+  (household profile, invite link, AI endpoint config, theme, JSON export).
+- **First-run onboarding wizard** — household name, allergies, dislikes,
+  favorites, things-to-remember, timezone; under 2 minutes.
+- Invite-link registration flow (spouse joins via link).
+- PWA offline: manifest, service worker (pages/assets cache-first, API always
+  network), 192/512 icons, self-hosted fonts.
+- Typed API client mirroring the backend contract; nginx same-origin `/api` +
+  `/images` proxy with 25 MB upload cap for photo imports.
+
 ## [0.1.1] — 2026-09-20
 
 ### Fixed

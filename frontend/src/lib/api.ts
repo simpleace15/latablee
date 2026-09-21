@@ -164,6 +164,12 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
+  // admin
+  seedDemo: () =>
+    request<{ seeded: boolean; reason?: string; recipes?: number; admin_user?: string }>(
+      "/admin/seed", { method: "POST", body: JSON.stringify({}) },
+    ),
+
   // recipes
   recipes: (q = "", tag = "") =>
     request<Recipe[]>(`/recipes?q=${encodeURIComponent(q)}&tag=${encodeURIComponent(tag)}`),

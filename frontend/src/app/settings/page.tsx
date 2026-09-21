@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { api, type Household, type User } from "@/lib/api";
 import { Button, Card, Input, Spinner } from "@/components/ui";
 import AppLayout from "../AppLayout";
-import { Bot, Download, Link2, Moon, Sun, Users } from "lucide-react";
+import { Bot, Database, Download, Link2, Moon, Sun, Users } from "lucide-react";
 
 const TIMEZONES = [
   "America/Denver", "America/Chicago", "America/New_York", "America/Los_Angeles",
@@ -18,6 +18,8 @@ export default function SettingsPage() {
   const [theme, setThemeState] = useState<string>("");
   const [inviteUrl, setInviteUrl] = useState("");
   const [inviteError, setInviteError] = useState("");
+  const [seeding, setSeeding] = useState(false);
+  const [seedMsg, setSeedMsg] = useState("");
 
   // llm settings
   const [llm, setLlm] = useState({ base_url: "", api_key: "", model: "", vision_model: "" });
@@ -54,6 +56,21 @@ export default function SettingsPage() {
     else window.localStorage.removeItem("latablee_theme");
     if (next) document.documentElement.dataset.theme = next;
     else delete document.documentElement.dataset.theme;
+  }
+
+  async function seedDemo() {
+    setSeedMsg("");
+    setSeeding(true);
+    try {
+      const res = await api.seedDemo();
+      setSeedMsg(res.seeded
+        ? `Demo loaded: ${res.recipes} recipes, sample week, groceries. Demo login: ${res.admin_user} / latablee-demo`
+        : res.reason || "Nothing seeded");
+    } catch (err) {
+      setSeedMsg(err instanceof Error ? err.message : "Seed failed");
+    } finally {
+      setSeeding(false);
+    }
   }
 
   async function makeInvite() {
@@ -163,6 +180,28 @@ export default function SettingsPage() {
           </p>
         )}
       </Card>
+
+      {/* Demo data (admin only) */}
+      {user?.role === "admin" && (
+        <Card className="mb-4 p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <Database size={18} aria-hidden style={{ color: "var(--color-primary)" }} />
+            <h2 className="font-heading text-lg">Demo data</h2>
+          </div>
+          <p className="mb-3 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+            Loads ~12 sample recipes, a sample week plan, and a grocery list. Only works on an
+            empty instance — existing data is never touched.
+          </p>
+          <Button variant="ghost" onClick={seedDemo} disabled={seeding}>
+            {seeding ? "Loading…" : "Load demo data"}
+          </Button>
+          {seedMsg && (
+            <p className="mt-3 break-words rounded-[12px] px-3 py-2.5 text-sm" style={{ background: "var(--color-muted)" }}>
+              {seedMsg}
+            </p>
+          )}
+        </Card>
+      )}
 
       {/* AI endpoint */}
       {user?.role === "admin" && (

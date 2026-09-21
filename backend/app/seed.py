@@ -16,6 +16,9 @@ SEED_FILE = Path(__file__).parent / "seed_data.json"
 def seed(household_name: str = "Demo Household", admin_name: str = "Admin",
          password: str = "latablee-demo") -> dict:
     """Load sample data. Overwrites nothing — adds a demo household if the DB is empty."""
+    from app.db.engine import create_all
+
+    create_all()  # safe when tables already exist; required on a fresh DB via `python -m app.seed`
     engine = get_engine()
     with Session(engine) as session:
         existing = session.exec(select(Household)).first()
@@ -80,7 +83,11 @@ def seed(household_name: str = "Demo Household", admin_name: str = "Admin",
 
 
 if __name__ == "__main__":
-    import sys
+    import argparse
 
-    print(json.dumps(seed(), indent=2))
-    _ = sys
+    p = argparse.ArgumentParser(description="Load LaTablée demo data (only on an empty database)")
+    p.add_argument("--household", default="Demo Household")
+    p.add_argument("--admin-name", default="Admin")
+    p.add_argument("--password", default="latablee-demo")
+    args = p.parse_args()
+    print(json.dumps(seed(household_name=args.household, admin_name=args.admin_name, password=args.password), indent=2))

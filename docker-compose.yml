@@ -34,7 +34,7 @@ services:
       - api
 
   # Optional Postgres — activates with: docker compose --profile postgres up -d
-  # then set LATABLEE_DATABASE_URL=postgresql://latablee:posablee@db:5432/latablee in your dotenv file
+  # then set LATABLEE_DATABASE_URL=postgresql://latablee:***@db:5432/latablee in your dotenv file
   db:
     image: postgres:16-alpine
     profiles: ["postgres"]
@@ -45,6 +45,22 @@ services:
     volumes:
       - latablee-pgdata:/var/lib/postgresql/data
     restart: unless-stopped
+
+  # One-shot demo seed (ONLY works on an empty database):
+  #   docker compose --profile seed run --rm seed
+  # Creates "Demo Household" with 12 recipes, a sample week, groceries, and
+  # admin login  Admin / latablee-demo  — change or delete after the tour.
+  seed:
+    profiles: ["seed"]
+    build: .
+    image: latablee-api
+    command: ["python", "-m", "app.seed"]
+    environment:
+      - LATABLEE_SECRET_KEY=${LATABLEE_SECRET_KEY:-seed-run-no-auth-needed}
+      - LATABLEE_DATABASE_URL=${LATABLEE_DATABASE_URL:-sqlite:///./data/latablee.db}
+    volumes:
+      - latablee-data:/srv/latablee/data
+    restart: "no"
 
 volumes:
   latablee-data:

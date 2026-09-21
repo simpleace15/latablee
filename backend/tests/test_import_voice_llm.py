@@ -83,13 +83,22 @@ def test_voice_wake_word_variants(client, admin):
 
 
 def test_voice_what_is_for_dinner(client, admin):
-    rid = client.post("/api/v1/recipes", json={
-        "title": "Chili", "instructions": [], "ingredients": []}, headers=admin).json()["id"]
-    client.post("/api/v1/plan", json={
-        "date": date.today().isoformat(), "slot": "dinner", "recipe_id": rid}, headers=admin)
+    # All dates flow through the HOUSEHOLD clock (the brief: "tonight" resolves
+    # in the household timezone, not the server's UTC date). Voice itself does
+    # the planning, so test process vs container tz can never disagree.
+    resp = client.post("/api/v1/voice/command", json={
+        "transcript": "plan Chili for dinner tonight"}, headers=admin)
+    assert resp.status_code == 200, resp.text
+    reply = resp.json()["reply"]
+    assert "Chili" in reply
+    assert "tonight" in reply  # planned for the household's today
+
+    # now the query answers with what we just planned
     resp = client.post("/api/v1/voice/command", json={
         "transcript": "what's for dinner tonight"}, headers=admin)
+    assert resp.status_code == 200, resp.text
     assert "Chili" in resp.json()["reply"]
+
 
 
 def test_voice_plan_meal_with_llm(client, admin, monkeypatch):

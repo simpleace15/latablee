@@ -80,6 +80,12 @@ def rule_based_parse(transcript: str) -> dict[str, Any] | None:
                 if rest:
                     return {"intent": "add_to_list", "item": rest,
                             "quantity": None, "unit": None}
+    m = re.match(r"^plan\s+(?P<title>.+?)\s+for\s+(?P<slot>breakfast|lunch|dinner)"
+                 r"(?:\s+(?P<when>tonight|today|tomorrow|next\s+\w+|\w+day))?$", t)
+    if m:
+        return {"intent": "plan_meal", "title": m.group("title").title(),
+                "slot": m.group("slot"),
+                "date_phrase": m.group("when") or "today"}
     if (t.startswith("what's for dinner") or t.startswith("whats for dinner")
             or "what is for dinner" in t):
         return {"intent": "query_plan", "date_phrase": "tonight"}

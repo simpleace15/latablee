@@ -3,6 +3,23 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.1.1] — 2026-09-20
+
+### Fixed
+- **Postgres URL rewriting injected a literal `***` password** — `str(sqlalchemy URL)`
+  masks the password; switched to `render_as_string(hide_password=False)`.
+  Compose `--profile postgres` now boots and passes the full smoke suite.
+- **Household-timezone date resolution** — `generate-from-plan`, plan-window defaults,
+  and voice date phrases ("tonight"/"Wednesday") previously used the server's UTC date;
+  now resolve against the household timezone (`app/services/dates.py`).
+- **Removed btree index on JSON `tags` column** — invalid in Postgres
+  (no default operator class); SQLite tolerated it, Postgres refused to create the table.
+
+### Added
+- `scripts/smoke.sh` — committed e2e smoke suite against a running API
+  (health → register → onboard → recipes → search → plan → list consolidation →
+  voice fast path → events → export).
+
 ## [0.1.0] — 2026-09-20
 
 ### Added

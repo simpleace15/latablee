@@ -1,4 +1,6 @@
 # LaTablée FastAPI app — versioned REST API under /api/v1
+import logging
+import time
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -19,7 +21,19 @@ app = FastAPI(
 )
 
 ensure_dirs()
-create_all()
+
+# Wait for the DB (docker compose races api vs db on first boot; Postgres
+# needs a few seconds to init). Retry up to ~60s, then fail loudly.
+logger = logging.getLogger("uvicorn.error")
+for _attempt in range(30):
+    try:
+        create_all()
+        break
+    except Exception as exc:
+        if _attempt == 29:
+            raise
+        logger.warning("DB not ready (attempt %d/30): %s", _attempt + 1, exc)
+        time.sleep(2)
 
 app.add_middleware(
     CORSMiddleware,

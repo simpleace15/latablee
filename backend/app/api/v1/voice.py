@@ -52,6 +52,9 @@ def command(
 
 
 def _apply(session: Session, user: User, result: dict) -> tuple[list[dict], str]:
+    from app.services.dates import household_today as _household_today
+
+    today = _household_today(session, user.household_id)
     actions: list[dict] = []
     kind = result.get("intent")
     if kind == "add_to_list":
@@ -83,7 +86,7 @@ def _apply(session: Session, user: User, result: dict) -> tuple[list[dict], str]
         actions.append({"type": "plan_meal",
                         "params": {"date": day.isoformat(), "slot": entry.slot,
                                    "title": result.get("title")}})
-        return actions, f"Planned {result.get('title')} for {voice_nlu.human_date(day)}."
+        return actions, f"Planned {result.get('title')} for {voice_nlu.human_date(day, today=today)}."
     if kind == "query_plan":
         day = voice_nlu.resolve_date(result.get("date_phrase") or "tonight", session, user)
         entries = session.exec(
@@ -93,8 +96,8 @@ def _apply(session: Session, user: User, result: dict) -> tuple[list[dict], str]
             )
         ).all()
         titles = [e.title_override or _recipe_title(session, e.recipe_id) or "something" for e in entries]
-        reply = f"{voice_nlu.human_date(day)}: {', '.join(titles)}." if titles else \
-            f"Nothing planned for {voice_nlu.human_date(day)} yet."
+        reply = f"{voice_nlu.human_date(day, today=today)}: {', '.join(titles)}." if titles else \
+            f"Nothing planned for {voice_nlu.human_date(day, today=today)} yet."
         actions.append({"type": "query_plan", "params": {"date": day.isoformat(), "found": titles}})
         return actions, reply
     return [], result.get("reply") or "I'm not sure how to help with that."

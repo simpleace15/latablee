@@ -6,7 +6,7 @@ from typing import Any
 
 from sqlmodel import Session
 
-from app.models import Household, User
+from app.models import User
 from app.services import llm_client
 
 _WAKE_VARIANTS = ("latablee", "la table", "la tablee", "latable", "la tabli",
@@ -37,16 +37,10 @@ def strip_wake_word(transcript: str, device_hint: str | None = None) -> str:
 
 
 def resolve_date(phrase: str, session: Session, user: User) -> date:
-    """Resolve 'tonight'/'Wednesday'/'this week' against the household timezone (today)."""
-    h = session.get(Household, user.household_id) if user.household_id else None
-    tzname = (h.timezone if h else None) or "UTC"
-    from zoneinfo import ZoneInfo
+    """Resolve 'tonight'/'Wednesday' against the household timezone (today)."""
+    from app.services.dates import household_today
 
-    try:
-        ZoneInfo(tzname)  # validate the IANA name
-    except Exception:
-        tzname = "UTC"
-    now = date.today()  # household-local dates; tz is validated for settings display
+    now = household_today(session, user.household_id)  # household-local 'today'
     p = phrase.lower().strip()
     weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
     if p in ("today", "tonight", "this evening"):
@@ -62,8 +56,9 @@ def resolve_date(phrase: str, session: Session, user: User) -> date:
     return now
 
 
-def human_date(d: date) -> str:
-    today = date.today()
+def human_date(d: date, today: date | None = None) -> str:
+    """Humanize a planned date. Pass household-local 'today' when available."""
+    today = today or date.today()
     if d == today:
         return "tonight"
     if d == today + timedelta(days=1):

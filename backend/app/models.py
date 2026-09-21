@@ -65,7 +65,8 @@ class Recipe(TimestampMixin, SQLModel, table=True):
     instructions: list[Any] | None = Field(default=None, sa_column=Column(JSON))  # ordered steps
     # Ingredients stored as canonical quantity units (Pint-normalized) for consolidation
     ingredients: list[Any] | None = Field(default=None, sa_column=Column(JSON))
-    tags: list[str] | None = Field(default=None, sa_column=Column(JSON, index=True))
+    # no btree index on JSON (invalid in Postgres); search uses search_text
+    tags: list[str] | None = Field(default=None, sa_column=Column(JSON))
     source_url: str | None = None
     source_name: str | None = None
     image_path: str | None = None  # relative path under data/images, served by the app

@@ -1,5 +1,4 @@
 # Database engine/session + Postgres URL rewriting (SQLModel/SQLAlchemy)
-import re
 
 from sqlalchemy import event
 from sqlalchemy.engine import make_url
@@ -15,10 +14,9 @@ def _postgres_url(url: str) -> str:
     u = make_url(url)
     if not u.drivername.startswith("postgres"):
         return url
-    backend = "postgresql+psycopg"
-    new = u.set(drivername=backend)
-    new = new.set(password=re.sub(r"[ \t]", "", new.password or ""))
-    return str(new)
+    # render_as_string with mask off — str(url) would LITERALLY inject '***'
+    # as the password (SQLAlchemy masks on string render).
+    return u.set(drivername="postgresql+psycopg").render_as_string(hide_password=False)
 
 
 def get_engine():

@@ -34,11 +34,14 @@ def _entry_out(e: MealPlanEntry) -> dict:
 def get_plan(
     user: Annotated[User, Depends(require_household)],
     session: Annotated[Session, Depends(get_session)],
-    start: date = Query(default_factory=date.today),
+    start: date | None = Query(default=None),
     days: int = 7,
 ) -> dict:
     if not 1 <= days <= 60:
         raise HTTPException(422, "days must be 1-60")
+    from app.services.dates import household_today
+
+    start = start or household_today(session, user.household_id)
     end = start + timedelta(days=days)
     entries = session.exec(
         select(MealPlanEntry).where(

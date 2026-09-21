@@ -152,8 +152,10 @@ def generate_from_plan(
     """Merge ingredients from planned recipes into this list (consolidates duplicates)."""
     from datetime import date as date_cls
 
+    from app.services.dates import household_today
+
     lst = _list_or_404(list_id, user, session)
-    start_date = date_cls.fromisoformat(start) if start else date_cls.today()
+    start_date = date_cls.fromisoformat(start) if start else household_today(session, user.household_id)
     entries = session.exec(
         select(MealPlanEntry).where(
             MealPlanEntry.household_id == user.household_id,

@@ -7,7 +7,7 @@ if __name__ == "__main__":
     settings = get_settings()
     uvicorn.run(
         "app.main:app",
-        host=settings.debug and "0.0.0.0" or "0.0.0.0",  # containerized; bind all
+        host="0.0.0.0",  # containerized; bind all interfaces
         port=8000,
         reload=settings.debug,
     )

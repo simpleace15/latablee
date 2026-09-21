@@ -89,6 +89,11 @@ function LoginForm() {
           autoComplete="username"
           required
         />
+        {mode === "login" && (
+          <p className="-mt-2 text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+            Names aren't case-sensitive — any capitalization works.
+          </p>
+        )}
         <Input
           label="Password"
           type="password"

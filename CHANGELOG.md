@@ -3,6 +3,15 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.3.2] — 2026-09-21
+
+### Changed
+- **Usernames are now case-insensitive.** Display case is preserved exactly as
+  typed (sign-up choice), but logins match any capitalization, and duplicate
+  detection is case-insensitive — "Tyler", "TYLER", and "tyler" are the same
+  account; a second registration differing only by case is rejected (409).
+  Names are whitespace-trimmed (max 40 chars). Login page notes the rule.
+
 ## [0.3.1] — 2026-09-21
 
 ### Added

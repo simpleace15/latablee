@@ -27,8 +27,18 @@ def register(
     session: Session = Depends(get_session),
 ) -> dict:
     """First ever user becomes admin; later users need a valid invite token."""
+    name = name.strip()
     if len(password) < 8:
         raise HTTPException(422, "Password must be at least 8 characters")
+    if not name:
+        raise HTTPException(422, "Name is required")
+    if len(name) > 40:
+        raise HTTPException(422, "Name too long (max 40 characters)")
+    # usernames are case-insensitive: "Tyler" and "tyler" are the same account;
+    # display case is preserved as typed
+    existing = session.exec(select(User)).all()
+    if any(u.name.casefold() == name.casefold() for u in existing):
+        raise HTTPException(409, "That name is already taken")
     first = not _first_user_exists(session)
     if not first and not invite_token:
         raise HTTPException(403, "Registration is admin-invite-only — ask for an invite link")
@@ -59,7 +69,9 @@ def login(
     form: Annotated[OAuth2PasswordRequestForm, Depends()],
     session: Annotated[Session, Depends(get_session)],
 ) -> dict:
-    user = session.exec(select(User).where(User.name == form.username)).first()
+    username = form.username.strip()
+    all_users = session.exec(select(User)).all()
+    user = next((u for u in all_users if u.name.casefold() == username.casefold()), None)
     if user is None or user.disabled or not verify_password(form.password, user.password_hash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong name or password")
     token = create_access_token(user)

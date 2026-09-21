@@ -89,6 +89,9 @@ def rule_based_parse(transcript: str) -> dict[str, Any] | None:
     if (t.startswith("what's for dinner") or t.startswith("whats for dinner")
             or "what is for dinner" in t):
         return {"intent": "query_plan", "date_phrase": "tonight"}
+    if re.search(r"refill|fill (?:out )?(?:my |the |this )?week|plan (?:my |the |this )?week", t) \
+            and "week" in t:
+        return {"intent": "refill_week"}
     return None
 
 
@@ -102,6 +105,7 @@ def llm_parse(transcript: str, session: Session, household_id: int) -> dict[str,
         'Allowed intents: {"intent":"add_to_list","item":string,"quantity":number|null,"unit":string|null} '
         '| {"intent":"plan_meal","title":string,"date_phrase":string,"slot":"breakfast"|"lunch"|"dinner"} '
         '| {"intent":"query_plan","date_phrase":string} '
+        '| {"intent":"refill_week"} '
         '| {"intent":"unknown","reply":string}. date_phrase is like "tonight", "tomorrow", '
         '"Wednesday", "next Monday". Recipe names for matching: ' + str(names[:40]) + ". "
         f'Request: "{transcript}"'

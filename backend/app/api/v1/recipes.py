@@ -71,6 +71,7 @@ def list_recipes(
     session: Annotated[Session, Depends(get_session)],
     q: str = "",
     tag: str = "",
+    favorite: str = "",  # "1" → only favorites
     limit: int = 100,
     offset: int = 0,
 ) -> list[dict]:
@@ -81,6 +82,8 @@ def list_recipes(
         recipes = [r for r in recipes if ql in (r.search_text or "")]
     if tag:
         recipes = [r for r in recipes if tag in (r.tags or [])]
+    if favorite == "1":
+        recipes = [r for r in recipes if r.is_favorite]
     return [_recipe_out(r) for r in recipes[offset:offset + limit]]
 
 
@@ -157,9 +160,25 @@ async def upload_image(
     return {"image_path": f"/images/{path.name}"}
 
 
+@router.put("/{recipe_id}/favorite")
+def toggle_favorite(
+    recipe_id: int,
+    user: Annotated[User, Depends(require_household)],
+    session: Annotated[Session, Depends(get_session)],
+    favorite: bool = True,
+) -> dict:
+    """Heart/unheart a recipe (household-wide, like the recipe itself)."""
+    r = get_recipe_or_404(recipe_id, session, user)
+    r.is_favorite = favorite
+    session.add(r)
+    session.commit()
+    return {"id": r.id, "is_favorite": r.is_favorite}
+
+
 def _recipe_out(r: Recipe) -> dict:
     return {
         "id": r.id, "title": r.title, "description": r.description,
+        "is_favorite": r.is_favorite,
         "servings": r.servings, "prep_minutes": r.prep_minutes,
         "cook_minutes": r.cook_minutes, "total_minutes": r.total_minutes,
         "instructions": r.instructions, "ingredients": r.ingredients, "tags": r.tags,

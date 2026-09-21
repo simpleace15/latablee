@@ -1,16 +1,27 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, type ShoppingList } from "@/lib/api";
+import { api, type Recipe, type ShoppingList } from "@/lib/api";
 import { drainOutbox, enqueue, isOnline, outboxCount } from "@/lib/outbox";
 import { Button, Card, EmptyState, Input, Spinner } from "@/components/ui";
 import AppLayout from "../AppLayout";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CheckCircle2, Circle, ListChecks, Plus, ShoppingBasket, Trash2 } from "lucide-react";
 
+/** 1.5 -> "1½", 0.5 -> "½", 2 -> "2" — grocery-aisle readable. */
+function prettyQty(q: number | null | undefined): string {
+  if (q == null) return "";
+  const whole = Math.floor(q);
+  const frac = q - whole;
+  const fracMap: [number, string][] = [[0.25, "¼"], [1 / 3, "⅓"], [0.5, "½"], [2 / 3, "⅔"], [0.75, "¾"]];
+  const f = fracMap.find(([v]) => Math.abs(frac - v) < 0.02)?.[1] ?? "";
+  return f ? (whole ? `${whole}${f}` : f) : String(Math.round(q * 100) / 100);
+}
+
 export default function ListPage() {
   const [loading, setLoading] = useState(true);
   const [lists, setLists] = useState<ShoppingList[]>([]);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [newItem, setNewItem] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -20,8 +31,9 @@ export default function ListPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.lists();
+      const [res, recs] = await Promise.all([api.lists(), api.recipes()]);
       setLists(res);
+      setRecipes(recs);
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't load");
@@ -129,6 +141,13 @@ export default function ListPage() {
     }
   }
 
+  function recipeNames(item: { from_recipe_ids: number[] }): string {
+    return (item.from_recipe_ids || [])
+      .map((id) => recipes.find((r) => r.id === id)?.title)
+      .filter(Boolean)
+      .join(" · ");
+  }
+
   const lst = lists[0] ?? null;
   const openItems = lst?.items.filter((i) => !i.done) ?? [];
   const doneItems = lst?.items.filter((i) => i.done) ?? [];
@@ -194,9 +213,16 @@ export default function ListPage() {
                 >
                   <Circle size={22} aria-hidden />
                 </button>
-                <p className="min-w-0 flex-1 truncate text-base">{item.name}</p>
-                <span className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>
-                  {item.quantity ?? ""} {item.unit ?? ""}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-base">{item.name}</p>
+                  {item.from_recipe_ids?.length > 0 && (
+                    <p className="truncate text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+                      for {recipeNames(item)}
+                    </p>
+                  )}
+                </div>
+                <span className="shrink-0 text-sm font-semibold" style={{ color: "var(--color-muted-foreground)" }}>
+                  {prettyQty(item.quantity)} {item.unit ?? ""}
                 </span>
                 <button className="pressable rounded-full p-1.5" onClick={() => setPendingDelete({ listId: lst.id, itemId: item.id, name: item.name })}
                   aria-label={`Remove ${item.name}`} style={{ color: "var(--color-muted-foreground)" }}>
@@ -216,7 +242,14 @@ export default function ListPage() {
                       aria-label={`Uncheck ${item.name}`} style={{ color: "var(--color-accent)" }}>
                       <CheckCircle2 size={22} aria-hidden />
                     </button>
-                    <span className="item-name struck flex-1 truncate text-base">{item.name}</span>
+                    <span className="item-name struck flex-1 truncate text-base">
+                      {item.name}
+                      {item.from_recipe_ids?.length > 0 && (
+                        <span className="ml-2 text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+                          ({recipeNames(item)})
+                        </span>
+                      )}
+                    </span>
                     <button className="pressable rounded-full p-1.5" onClick={() => setPendingDelete({ listId: lst.id, itemId: item.id, name: item.name })}
                       aria-label={`Remove ${item.name}`} style={{ color: "var(--color-muted-foreground)" }}>
                       <Trash2 size={16} aria-hidden />

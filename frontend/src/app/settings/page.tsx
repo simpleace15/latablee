@@ -28,6 +28,8 @@ export default function SettingsPage() {
   const [migMsg, setMigMsg] = useState("");
 
   // llm settings
+  const [prefsDraft, setPrefsDraft] = useState<{ allergies: string; dislikes: string }>({ allergies: "", dislikes: "" });
+  const [prefsSaved, setPrefsSaved] = useState(false);
   const [llm, setLlm] = useState({ base_url: "", api_key: "", model: "", vision_model: "" });
   const [llmKeySet, setLlmKeySet] = useState(false);
   const [llmSaved, setLlmSaved] = useState(false);
@@ -39,6 +41,10 @@ export default function SettingsPage() {
         const [u, h] = await Promise.all([api.me(), api.household()]);
         setUser(u);
         setHousehold(h);
+      setPrefsDraft({
+        allergies: (h.allergies ?? []).join(", "),
+        dislikes: (h.dislikes ?? []).join(", "),
+      });
         if (u.role === "admin") {
           try {
             const s = await api.llmSettings();
@@ -91,6 +97,21 @@ export default function SettingsPage() {
       setMigMsg(err instanceof Error ? err.message : "Import failed");
     } finally {
       setMigBusy(false);
+    }
+  }
+
+  async function savePrefs() {
+    const parse = (v: string) => v.split(",").map((x) => x.trim()).filter(Boolean);
+    try {
+      await api.updateHousehold({
+        name: household?.name ?? "",
+        allergies: parse(prefsDraft.allergies),
+        dislikes: parse(prefsDraft.dislikes),
+      });
+      setPrefsSaved(true);
+      setTimeout(() => setPrefsSaved(false), 2000);
+    } catch (err) {
+      setSeedMsg(err instanceof Error ? err.message : "Couldn't save preferences");
     }
   }
 
@@ -300,6 +321,34 @@ export default function SettingsPage() {
           </div>
         </Card>
       )}
+
+      {/* Food preferences */}
+      <Card className="mb-4 p-5">
+        <div className="mb-3 flex items-center gap-2">
+          <Users size={18} aria-hidden style={{ color: "var(--color-primary)" }} />
+          <h2 className="font-heading text-lg">Food preferences</h2>
+        </div>
+        <p className="mb-3 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+          The AI avoids these in suggestions and meal planning. Comma-separated.
+        </p>
+        <div className="flex flex-col gap-3">
+          <Input
+            label="Never these (allergies & hard nos)"
+            value={prefsDraft.allergies}
+            onChange={(e) => setPrefsDraft({ ...prefsDraft, allergies: e.target.value })}
+            placeholder="shellfish, cilantro"
+          />
+          <Input
+            label="Dislikes (avoid when possible)"
+            value={prefsDraft.dislikes}
+            onChange={(e) => setPrefsDraft({ ...prefsDraft, dislikes: e.target.value })}
+            placeholder="mushrooms, olives"
+          />
+        </div>
+        <div className="mt-3">
+          <Button onClick={() => void savePrefs()}>{prefsSaved ? "Saved ✓" : "Save preferences"}</Button>
+        </div>
+      </Card>
 
       {/* Appearance */}
       <Card className="mb-4 p-5">

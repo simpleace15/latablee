@@ -184,6 +184,29 @@ def generate_from_plan(
     return _list_out(session, lst)
 
 
+@router.post("/{list_id}/add-recipe/{recipe_id}")
+def add_recipe_to_list(
+    list_id: int,
+    recipe_id: int,
+    user: Annotated[User, Depends(require_household)],
+    session: Annotated[Session, Depends(get_session)],
+) -> dict:
+    """One-click: push every ingredient of one recipe onto this list, consolidated,
+    with per-line attribution to the recipe (shown in the UI)."""
+    lst = _list_or_404(list_id, user, session)
+    r = session.get(Recipe, recipe_id)
+    if r is None or r.household_id != user.household_id:
+        raise HTTPException(404, "Recipe not found")
+    items = [
+        ItemIn(name=ing.get("name", ""), quantity=ing.get("quantity"), unit=ing.get("unit"))
+        for ing in (r.ingredients or []) if isinstance(ing, dict)
+    ]
+    consolidate_items(session, items, lst.id, user.household_id, from_recipe_ids=[r.id])
+    session.commit()
+    record_event(session, "shopping_list_updated", {"list_id": lst.id, "added_recipe": r.id})
+    return _list_out(session, lst)
+
+
 def consolidate_items(
     session: Session,
     items: list[ItemIn],

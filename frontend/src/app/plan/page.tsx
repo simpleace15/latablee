@@ -5,7 +5,16 @@ import { api, type PlanEntry, type Recipe } from "@/lib/api";
 import { Button, Card, Chip, EmptyState, Input, Spinner } from "@/components/ui";
 import AppLayout from "../AppLayout";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { CalendarDays, Plus, Trash2 } from "lucide-react";
+import { CalendarDays, Plus, Sparkles, Trash2 } from "lucide-react";
+
+interface Proposal {
+  date: string;
+  slot: string;
+  from_book: boolean;
+  title: string;
+  why: string;
+  recipe: Partial<Recipe> | null;
+}
 
 const SLOTS = ["breakfast", "lunch", "dinner", "other"] as const;
 type Slot = (typeof SLOTS)[number];
@@ -41,6 +50,10 @@ export default function PlanPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [pendingDelete, setPendingDelete] = useState<{ id: number; label: string } | null>(null);
+  const [refilling, setRefilling] = useState(false);
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [refillMsg, setRefillMsg] = useState("");
+  const [savingIdx, setSavingIdx] = useState<number | null>(null);
 
   const load = useCallback(async (start?: string) => {
     setLoading(true);
@@ -84,6 +97,44 @@ export default function PlanPage() {
     }
   }
 
+  async function refillWeek() {
+    setRefilling(true);
+    setProposals([]);
+    setRefillMsg("");
+    try {
+      const res = await api.refillWeek({ days: 7, slots: ["dinner"] });
+      if (res.message) {
+        setRefillMsg(res.message);
+      } else {
+        const parts: string[] = [];
+        if (res.filled.length) parts.push(`Planned ${res.filled.length} from your book`);
+        if (res.proposals.length) parts.push(`${res.proposals.length} new idea${res.proposals.length === 1 ? "" : "s"} below`);
+        setRefillMsg(parts.join(" · ") || "Nothing to add");
+        setProposals(res.proposals);
+      }
+      await load(weekStart);
+    } catch (err) {
+      setRefillMsg(err instanceof Error ? err.message : "Refill failed");
+    } finally {
+      setRefilling(false);
+    }
+  }
+
+  async function saveProposal(p: Proposal, idx: number) {
+    if (!p.recipe) return;
+    setSavingIdx(idx);
+    try {
+      await api.saveProposal({ recipe: p.recipe, date: p.date, slot: p.slot });
+      setProposals((cur) => cur.filter((_, i) => i !== idx));
+      setRefillMsg(`"${p.title}" saved to your book and planned`);
+      await load(weekStart);
+    } catch (err) {
+      setRefillMsg(err instanceof Error ? err.message : "Couldn't save");
+    } finally {
+      setSavingIdx(null);
+    }
+  }
+
   async function remove() {
     if (!pendingDelete) return;
     await api.deletePlanEntry(pendingDelete.id);
@@ -118,12 +169,54 @@ export default function PlanPage() {
     <AppLayout>
       <header className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl">The plan</h1>
-        <Button
-          onClick={() => { setPickDate(todayISO()); setPickerOpen(true); }}
-        >
-          <Plus size={18} aria-hidden /> Add
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => void refillWeek()} disabled={refilling} variant="accent">
+            <Sparkles size={18} aria-hidden /> {refilling ? "Thinking…" : "Refill week"}
+          </Button>
+          <Button
+            onClick={() => { setPickDate(todayISO()); setPickerOpen(true); }}
+          >
+            <Plus size={18} aria-hidden /> Add
+          </Button>
+        </div>
       </header>
+
+      {refillMsg && (
+        <p className="mb-3 rounded-[12px] px-3 py-2 text-sm font-semibold"
+           style={{ background: "var(--color-muted)", color: "var(--color-muted-foreground)" }}>
+          {refillMsg}
+        </p>
+      )}
+
+      {proposals.length > 0 && (
+        <div className="mb-5 flex flex-col gap-2">
+          <p className="text-sm font-bold uppercase tracking-wide" style={{ color: "var(--color-muted-foreground)" }}>
+            New ideas — save the ones you want
+          </p>
+          {proposals.map((p, idx) => (
+            <Card key={`${p.date}-${p.slot}-${idx}`} className="p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-heading text-lg">{p.title}</p>
+                  <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+                    {fmtDay(p.date)} · {SLOT_LABEL[p.slot as Slot] || p.slot}
+                    {p.why ? ` — ${p.why}` : ""}
+                  </p>
+                </div>
+                <Button onClick={() => void saveProposal(p, idx)} disabled={savingIdx === idx}>
+                  {savingIdx === idx ? "…" : "Save to book"}
+                </Button>
+              </div>
+              {p.recipe?.ingredients && p.recipe.ingredients.length > 0 && (
+                <p className="mt-1.5 truncate text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+                  {p.recipe.ingredients.map((i: { name: string }) => i.name).slice(0, 6).join(", ")}
+                  {p.recipe.ingredients.length > 6 ? ` +${p.recipe.ingredients.length - 6} more` : ""}
+                </p>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
 
       <div className="mb-4 flex items-center justify-between">
         <Button variant="ghost" onClick={() => shiftWeek(-1)} aria-label="Previous week">←</Button>

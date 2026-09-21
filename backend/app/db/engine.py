@@ -55,7 +55,29 @@ def create_all() -> None:
 
     import app.models  # noqa: F401
 
-    SQLModel.metadata.create_all(get_engine())
+    engine = get_engine()
+    SQLModel.metadata.create_all(engine)
+    _migrate_sqlite_columns(engine)
+
+
+def _migrate_sqlite_columns(engine) -> None:
+    """SQLite create_all won't ALTER existing tables — add columns introduced after
+    first deploy idempotently (fast-path deploy without a migration framework)."""
+    from sqlalchemy import inspect, text
+
+    insp = inspect(engine)
+    additions: dict[str, list[tuple[str, str]]] = {
+        "recipe": [("is_favorite", "INTEGER NOT NULL DEFAULT 0")],
+    }
+    with engine.connect() as conn:
+        for table, cols in additions.items():
+            if not insp.has_table(table):
+                continue
+            present = {c["name"] for c in insp.get_columns(table)}
+            for col, ddl in cols:
+                if col not in present:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}"))
+        conn.commit()
 
 
 def reset_database() -> None:

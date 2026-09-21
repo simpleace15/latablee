@@ -7,7 +7,7 @@ import { api, type Recipe } from "@/lib/api";
 import { Button, Card, Spinner } from "@/components/ui";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import AppLayout from "../../AppLayout";
-import { ArrowLeft, ChefHat, Clock, ExternalLink, ImagePlus, Trash2 } from "lucide-react";
+import { ArrowLeft, ChefHat, Clock, ExternalLink, Heart, ImagePlus, ListPlus, Trash2 } from "lucide-react";
 
 function RecipeDetailView() {
   const router = useRouter();
@@ -21,7 +21,42 @@ function RecipeDetailView() {
   const [servings, setServings] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [addingToList, setAddingToList] = useState(false);
+  const [addedMsg, setAddedMsg] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  async function toggleFav() {
+    if (!recipe) return;
+    const next = !recipe.is_favorite;
+    setRecipe({ ...recipe, is_favorite: next });
+    try {
+      await api.toggleFavorite(recipe.id as number, next);
+    } catch {
+      setRecipe((r) => (r ? { ...r, is_favorite: !next } : r));
+    }
+  }
+
+  async function addToList() {
+    if (!recipe) return;
+    setAddingToList(true);
+    try {
+      await api.addRecipeToList((await firstListId()) as number, recipe.id as number);
+      setAddedMsg("Added to your list");
+      setTimeout(() => setAddedMsg(""), 2500);
+    } catch {
+      setAddedMsg("Couldn't add — no list yet");
+      setTimeout(() => setAddedMsg(""), 2500);
+    } finally {
+      setAddingToList(false);
+    }
+  }
+
+  async function firstListId(): Promise<number | undefined> {
+    const lists = await api.lists();
+    if (lists.length > 0) return lists[0].id;
+    const created = await api.createList();
+    return created.id;
+  }
 
   async function load() {
     setLoading(true);
@@ -164,10 +199,17 @@ function RecipeDetailView() {
       )}
 
       <div className="mb-2 flex items-start justify-between gap-3">
-        <h1 className="text-3xl">{recipe.title}</h1>
-        <button className="pressable rounded-full p-2" onClick={() => fileRef.current?.click()} aria-label="Change photo">
-          <ImagePlus size={18} aria-hidden />
-        </button>
+        <h1 className="min-w-0 text-3xl">{recipe.title}</h1>
+        <div className="flex shrink-0 items-center gap-1">
+          <button className="pressable rounded-full p-2" onClick={() => void toggleFav()}
+            aria-label={recipe.is_favorite ? "Unfavorite" : "Favorite"}
+            style={{ color: recipe.is_favorite ? "var(--color-destructive)" : "var(--color-muted-foreground)" }}>
+            <Heart size={20} aria-hidden fill={recipe.is_favorite ? "currentColor" : "none"} />
+          </button>
+          <button className="pressable rounded-full p-2" onClick={() => fileRef.current?.click()} aria-label="Change photo">
+            <ImagePlus size={18} aria-hidden />
+          </button>
+        </div>
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onUpload} />
       </div>
 
@@ -192,6 +234,15 @@ function RecipeDetailView() {
           <ExternalLink size={15} aria-hidden /> Source{recipe.source_name ? ` · ${recipe.source_name}` : ""}
         </a>
       )}
+
+      <div className="mb-3 flex items-center gap-3">
+        <Button onClick={() => void addToList()} disabled={addingToList}>
+          <ListPlus size={16} aria-hidden /> {addingToList ? "Adding…" : "Add to list"}
+        </Button>
+        {addedMsg && (
+          <p className="text-sm font-semibold" style={{ color: "var(--color-accent)" }}>{addedMsg}</p>
+        )}
+      </div>
 
       <h2 className="mb-2 font-heading text-xl">Ingredients</h2>
       <Card className="mb-5 p-4">

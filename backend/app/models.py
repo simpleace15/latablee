@@ -70,6 +70,7 @@ class Recipe(TimestampMixin, SQLModel, table=True):
     source_url: str | None = None
     source_name: str | None = None
     image_path: str | None = None  # relative path under data/images, served by the app
+    is_favorite: bool = False  # hearted by the household — favorites filter & suggestions bias
     created_by: int | None = Field(default=None, foreign_key="user.id")
     household_id: int | None = Field(default=None, foreign_key="household.id", index=True)
     search_text: str = ""  # denormalized for SQLite FTS-style LIKE search

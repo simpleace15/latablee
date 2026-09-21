@@ -3,6 +3,23 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.4.0] — 2026-09-21
+
+### Added
+- **Favorites:** heart on every recipe card + recipe page, Favorites filter chip
+  on the Recipes grid, `PUT /recipes/{id}/favorite`, `?favorite=1` filter.
+- **One-click add to grocery list:** "Add to list" on each recipe pushes all
+  ingredients, stacking compatible units (½ loaf + ½ loaf → 1 loaf) and
+  attributing each line to the recipe(s) it came from — shown under the item.
+- **Refill week (AI):** button on the Plan page fills empty dinner slots for
+  the next 7 days — picks from your recipe book directly (favorites biased),
+  and proposes brand-new dishes as review cards with one-tap "Save to book"
+  (saves + books the slot). Voice: "refill my week" fast path added.
+- **Food preferences in Settings:** allergies and dislikes (any user) — the
+  refill/suggestion prompts treat them as hard constraints.
+- SQLite fast-path column migrations at startup (is_favorite), so existing
+  deployments upgrade in place without a migration tool.
+
 ## [0.3.2] — 2026-09-21
 
 ### Changed

@@ -75,6 +75,7 @@ export interface Recipe {
   source_url: string | null;
   source_name: string | null;
   image_path: string | null;
+  is_favorite?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -195,6 +196,10 @@ export const api = {
   updateRecipe: (id: number, r: Partial<Recipe>) =>
     request<Recipe>(`/recipes/${id}`, { method: "PUT", body: JSON.stringify(r) }),
   deleteRecipe: (id: number) => request<void>(`/recipes/${id}`, { method: "DELETE" }),
+  toggleFavorite: (id: number, favorite: boolean) =>
+    request<{ id: number; is_favorite: boolean }>(`/recipes/${id}/favorite?favorite=${favorite}`, {
+      method: "PUT",
+    }),
   uploadRecipeImage: (id: number, file: File) => {
     const form = new FormData();
     form.append("file", file);
@@ -238,6 +243,8 @@ export const api = {
     request<void>(`/lists/${listId}/items/${itemId}`, { method: "DELETE" }),
   generateFromPlan: (listId: number) =>
     request<ShoppingList>(`/lists/${listId}/generate-from-plan`, { method: "POST" }),
+  addRecipeToList: (listId: number, recipeId: number) =>
+    request<ShoppingList>(`/lists/${listId}/add-recipe/${recipeId}`, { method: "POST" }),
 
   // import
   importFromUrl: (url: string) =>
@@ -267,6 +274,21 @@ export const api = {
     vision_model: string;
   }) => request<{ saved: boolean }>("/llm/settings", { method: "PUT", body: JSON.stringify(payload) }),
   suggestMeals: () => request<{ suggestions: string }>("/llm/suggest-meals", { method: "POST" }),
+  refillWeek: (payload?: { days?: number; slots?: string[] }) =>
+    request<{
+      filled: { date: string; slot: string; recipe_id: number; title: string; why: string }[];
+      proposals: {
+        date: string; slot: string; from_book: boolean; title: string; why: string;
+        recipe: Partial<Recipe> | null;
+      }[];
+      message?: string;
+    }>("/llm/refill-week", { method: "POST", body: JSON.stringify(payload ?? {}) }),
+  saveProposal: (payload: {
+    recipe: Partial<Recipe>; date?: string; slot?: string;
+  }) => request<Recipe & { planned: boolean }>("/llm/save-proposal", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }),
   generateRecipe: (payload: { prompt?: string; ingredients?: string[] }) =>
     request<{ parsed: Partial<Recipe> }>("/llm/generate-recipe", {
       method: "POST",

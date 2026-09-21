@@ -5,13 +5,14 @@ import Link from "next/link";
 import { api, type Recipe } from "@/lib/api";
 import { Button, Card, Chip, EmptyState, Spinner } from "@/components/ui";
 import AppLayout from "../AppLayout";
-import { ChefHat, Plus, Search } from "lucide-react";
+import { ChefHat, Heart, Plus, Search } from "lucide-react";
 
 export default function RecipesPage() {
   const [loading, setLoading] = useState(true);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [q, setQ] = useState("");
   const [activeTag, setActiveTag] = useState("");
+  const [favOnly, setFavOnly] = useState(false);
   const [error, setError] = useState("");
 
   const load = useCallback(async (query: string, tag: string) => {
@@ -30,6 +31,17 @@ export default function RecipesPage() {
   useEffect(() => {
     void load("", "");
   }, [load]);
+
+  async function toggleFav(e: React.MouseEvent, id: number, next: boolean) {
+    e.preventDefault(); // don't navigate to the recipe
+    e.stopPropagation();
+    setRecipes((cur) => cur.map((r) => (r.id === id ? { ...r, is_favorite: next } : r)));
+    try {
+      await api.toggleFavorite(id, next);
+    } catch {
+      setRecipes((cur) => cur.map((r) => (r.id === id ? { ...r, is_favorite: !next } : r)));
+    }
+  }
 
   const allTags = Array.from(new Set(recipes.flatMap((r) => r.tags))).sort();
 
@@ -64,6 +76,12 @@ export default function RecipesPage() {
         </div>
       </div>
 
+      <div className="mb-3 flex flex-wrap gap-2">
+        <Chip active={favOnly} onClick={() => { const n = !favOnly; setFavOnly(n); void load(q, activeTag && "") }}>
+          <Heart size={14} aria-hidden className="inline" /> Favorites
+        </Chip>
+      </div>
+
       {allTags.length > 0 && (
         <div className="mb-4 flex flex-wrap gap-2">
           {allTags.map((t) => (
@@ -91,7 +109,9 @@ export default function RecipesPage() {
         />
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {recipes.map((r) => (
+          {recipes
+            .filter((r) => (favOnly ? r.is_favorite : true))
+            .map((r) => (
             <Link key={r.id} href={`/recipes/view/?id=${r.id}`} className="pressable block">
               <Card className="flex items-center justify-between gap-3 p-4">
                 <div className="min-w-0">
@@ -101,9 +121,19 @@ export default function RecipesPage() {
                     {r.tags.slice(0, 3).join(", ")}
                   </p>
                 </div>
-                {r.image_path && (
-                  <img src={r.image_path} alt="" className="h-14 w-14 shrink-0 rounded-[12px] object-cover" />
-                )}
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <button
+                    className="pressable rounded-full p-1.5"
+                    onClick={(e) => void toggleFav(e, r.id as number, !r.is_favorite)}
+                    aria-label={r.is_favorite ? `Unfavorite ${r.title}` : `Favorite ${r.title}`}
+                    style={{ color: r.is_favorite ? "var(--color-destructive)" : "var(--color-muted-foreground)" }}
+                  >
+                    <Heart size={18} aria-hidden fill={r.is_favorite ? "currentColor" : "none"} />
+                  </button>
+                  {r.image_path && (
+                    <img src={r.image_path} alt="" className="h-14 w-14 rounded-[12px] object-cover" />
+                  )}
+                </div>
               </Card>
             </Link>
           ))}

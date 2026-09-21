@@ -87,6 +87,22 @@ def _apply(session: Session, user: User, result: dict) -> tuple[list[dict], str]
                         "params": {"date": day.isoformat(), "slot": entry.slot,
                                    "title": result.get("title")}})
         return actions, f"Planned {result.get('title')} for {voice_nlu.human_date(day, today=today)}."
+    if kind == "refill_week":
+        from app.api.v1.llm import refill_week as _refill
+
+        try:
+            res = _refill(user=user, session=session, payload={"days": 7, "slots": ["dinner"]})
+        except HTTPException as exc:
+            return [], f"Can't refill the week: {exc.detail}"
+        filled = res.get("filled", [])
+        proposals = res.get("proposals", [])
+        if res.get("message"):
+            return actions, "The week is already full."
+        part = f"I planned {len(filled)} meals from your recipes." if filled else ""
+        if proposals:
+            part += f" I also have {len(proposals)} new ideas waiting on the Plan page for your OK."
+        reply = (part or "I couldn't find anything to add.").strip()
+        return actions, reply
     if kind == "query_plan":
         day = voice_nlu.resolve_date(result.get("date_phrase") or "tonight", session, user)
         entries = session.exec(

@@ -37,10 +37,17 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+      # Frontend lands in build step 2; until then this job passes trivially.
+      - name: Skip until frontend exists
+        id: guard
+        run: echo "present=$(test -f package.json && echo yes || echo no)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v4
+        if: steps.guard.outputs.present == 'yes'
         with:
           node-version: "20"  # brief pins Node 20 LTS
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+        if: steps.guard.outputs.present == 'yes'
       - run: npm run build
+        if: steps.guard.outputs.present == 'yes'

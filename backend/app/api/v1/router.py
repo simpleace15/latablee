@@ -13,6 +13,7 @@ from app.api.v1 import (
                         migrate,
                         planner,
                         recipes,
+                        tokens,
                         voice,
 )
 
@@ -27,5 +28,6 @@ api_router.include_router(llm.router, prefix="/llm", tags=["llm"])
 api_router.include_router(voice.router, prefix="/voice", tags=["voice"])
 api_router.include_router(export.router, prefix="/export", tags=["export"])
 api_router.include_router(events.router, prefix="/events", tags=["events"])
+api_router.include_router(tokens.router, prefix="/tokens", tags=["tokens"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(migrate.router, prefix="/migrate", tags=["migrate"])

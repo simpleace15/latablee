@@ -50,10 +50,35 @@ def decode_token(token: str) -> dict[str, Any]:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token") from exc
 
 
+def _device_token_user(token: str, session: Session) -> User | None:
+    """Look up a device/API token (repo-2 integrations). Format: lat_<32 hex>."""
+    if not token.startswith("lat_"):
+        return None
+    import hashlib
+    from datetime import UTC, datetime
+
+    from app.models import ApiToken
+
+    h = hashlib.sha256(token.encode()).hexdigest()
+    row = session.exec(select(ApiToken).where(ApiToken.token_hash == h)).first()
+    if row is None or row.revoked_at is not None:
+        return None
+    user = session.get(User, row.user_id)
+    if user is None or user.disabled:
+        return None
+    row.last_used_at = datetime.now(UTC)
+    session.add(row)
+    session.commit()
+    return user
+
+
 def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
     session: Annotated[Session, Depends(get_session)],
 ) -> User:
+    device_user = _device_token_user(token, session)
+    if device_user is not None:
+        return device_user
     payload = decode_token(token)
     user = session.exec(select(User).where(User.public_id == payload["sub"])).first()
     if user is None:

@@ -8,17 +8,64 @@ USER_AGENT = "LaTablee/0.1 (+https://latablee.io; self-hosted recipe importer)"
 
 
 def import_from_url(url: str) -> dict[str, Any]:
-    """Fetch + parse a recipe URL into a structured draft (not auto-saved)."""
+    """Fetch + parse a recipe URL into a structured draft (not auto-saved).
+    Also downloads the recipe's main image so it lives on OUR storage, not the
+    source site's (which can die, hotlink-block, or change URLs)."""
     with httpx.Client(timeout=30, follow_redirects=True,
                       headers={"User-Agent": USER_AGENT}) as client:
         resp = client.get(url)
         resp.raise_for_status()
         html = resp.text
-    data = extruct_extract(html, syntaxes=["json-ld", "microdata"], uniform=True)
-    recipe = _find_recipe(data)
-    if recipe is None:
-        raise ValueError("No schema.org Recipe found on page")
-    return _to_draft(recipe, url)
+        data = extruct_extract(html, syntaxes=["json-ld", "microdata"], uniform=True)
+        recipe = _find_recipe(data)
+        if recipe is None:
+            raise ValueError("No schema.org Recipe found on page")
+        draft = _to_draft(recipe, url)
+        img_url = _extract_image_url(recipe, html)
+        if img_url:
+            img_bytes = _fetch_image(client, img_url)
+            if img_bytes:
+                import base64
+
+                draft["image_b64"] = base64.b64encode(img_bytes).decode()
+    return draft
+
+
+def _extract_image_url(recipe: dict[str, Any], html: str) -> str | None:
+    img = recipe.get("image")
+    if isinstance(img, list):
+        img = img[0] if img else None
+    if isinstance(img, dict):
+        img = img.get("url")
+    if isinstance(img, str) and img:
+        return img
+    # og:image / twitter:image fallback
+    import re
+
+    m = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)',
+                  html, re.I) or re.search(
+        r'<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)', html, re.I)
+    return m.group(1) if m else None
+
+
+def _fetch_image(client: httpx.Client, url: str) -> bytes | None:
+    """Download the image; size-capped, content-validated, failures never block import."""
+    from app.core.config import get_settings
+
+    try:
+        resp = client.get(url)
+        resp.raise_for_status()
+        data = resp.content
+        import imghdr
+
+        kind = imghdr.what(None, h=data)
+        if kind not in ("jpeg", "png", "webp"):
+            return None
+        if len(data) > get_settings().max_upload_bytes:
+            return None
+        return data
+    except Exception:
+        return None  # image is a nice-to-have; the recipe still imports
 
 
 def _find_recipe(data: dict[str, Any]) -> dict[str, Any] | None:

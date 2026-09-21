@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, type Household, type User } from "@/lib/api";
 import { Button, Card, Input, Spinner } from "@/components/ui";
 import AppLayout from "../AppLayout";
-import { Bot, Database, Download, Link2, LogOut, Moon, PackageOpen, Sun, Users } from "lucide-react";
+import { Bot, Database, Download, KeyRound, Link2, LogOut, Moon, PackageOpen, RotateCcw, Sun, Trash2, Users } from "lucide-react";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 const TIMEZONES = [
   "America/Denver", "America/Chicago", "America/New_York", "America/Los_Angeles",
@@ -26,9 +27,18 @@ export default function SettingsPage() {
   const [migPreview, setMigPreview] = useState<{ would_import: number; skipped: number; format: string; with_images: number } | null>(null);
   const [migBusy, setMigBusy] = useState(false);
   const [migMsg, setMigMsg] = useState("");
+  const restoreInputRef = useRef<HTMLInputElement | null>(null);
 
   // llm settings
   const [prefsDraft, setPrefsDraft] = useState<{ allergies: string; dislikes: string }>({ allergies: "", dislikes: "" });
+  const [tokens, setTokens] = useState<{ id: number; name: string; created_at: string; last_used_at: string | null; revoked: boolean }[]>([]);
+  const [newTokenName, setNewTokenName] = useState("");
+  const [newTokenRaw, setNewTokenRaw] = useState("");
+  const [tokenMsg, setTokenMsg] = useState("");
+  const [restoreFile, setRestoreFile] = useState<File | null>(null);
+  const [confirmRestore, setConfirmRestore] = useState(false);
+  const [restoreMsg, setRestoreMsg] = useState("");
+  const [restoreBusy, setRestoreBusy] = useState(false);
   const [prefsSaved, setPrefsSaved] = useState(false);
   const [llm, setLlm] = useState({ base_url: "", api_key: "", model: "", vision_model: "" });
   const [llmKeySet, setLlmKeySet] = useState(false);
@@ -45,6 +55,7 @@ export default function SettingsPage() {
         allergies: (h.allergies ?? []).join(", "),
         dislikes: (h.dislikes ?? []).join(", "),
       });
+      api.tokens().then((res) => setTokens(res.tokens)).catch(() => {});
         if (u.role === "admin") {
           try {
             const s = await api.llmSettings();
@@ -112,6 +123,46 @@ export default function SettingsPage() {
       setTimeout(() => setPrefsSaved(false), 2000);
     } catch (err) {
       setSeedMsg(err instanceof Error ? err.message : "Couldn't save preferences");
+    }
+  }
+
+  async function mintToken() {
+    if (!newTokenName.trim()) { setTokenMsg("Give the token a name first"); return; }
+    try {
+      const res = await api.createToken(newTokenName.trim());
+      setNewTokenRaw(res.token);
+      setNewTokenName("");
+      setTokenMsg("");
+      api.tokens().then((res) => setTokens(res.tokens)).catch(() => {});
+    } catch (err) {
+      setTokenMsg(err instanceof Error ? err.message : "Couldn't create token");
+    }
+  }
+
+  async function revokeToken(id: number) {
+    try {
+      await api.revokeToken(id);
+      api.tokens().then((res) => setTokens(res.tokens)).catch(() => {});
+    } catch {
+      setTokenMsg("Couldn't revoke");
+    }
+  }
+
+  async function doRestore() {
+    if (!restoreFile) return;
+    setConfirmRestore(false);
+    setRestoreBusy(true);
+    setRestoreMsg("");
+    try {
+      const res = await api.restoreBackup(restoreFile);
+      const c = res.restored;
+      setRestoreMsg(`Restored ${c.recipes ?? 0} recipes, ${c.plan ?? 0} planned meals, ${c.lists ?? 0} lists. Reloading…`);
+      setTimeout(() => window.location.reload(), 1800);
+    } catch (err) {
+      setRestoreMsg(err instanceof Error ? err.message : "Restore failed — is that a LaTablée backup?");
+    } finally {
+      setRestoreBusy(false);
+      setRestoreFile(null);
     }
   }
 
@@ -377,6 +428,88 @@ export default function SettingsPage() {
         </div>
       </Card>
 
+      {/* Device tokens (integrations) */}
+      <Card className="mb-4 p-5">
+        <div className="mb-3 flex items-center gap-2">
+          <KeyRound size={18} aria-hidden style={{ color: "var(--color-primary)" }} />
+          <h2 className="font-heading text-lg">Device tokens</h2>
+        </div>
+        <p className="mb-3 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+          Long-lived keys for integrations (Home Assistant, scripts) — they don't expire
+          like logins. Create one per device, revoke anytime.
+        </p>
+        {newTokenRaw && (
+          <div className="mb-3 rounded-[12px] p-3" style={{ background: "var(--color-muted)" }}>
+            <p className="mb-1 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--color-muted-foreground)" }}>
+              Copy it now — shown only once
+            </p>
+            <code className="break-all text-sm" style={{ color: "var(--color-foreground)" }}>{newTokenRaw}</code>
+          </div>
+        )}
+        <div className="mb-2 flex gap-2">
+          <Input
+            label=""
+            value={newTokenName}
+            onChange={(e) => setNewTokenName(e.target.value)}
+            placeholder="e.g. Home Assistant"
+          />
+          <Button onClick={() => void mintToken()}>Create token</Button>
+        </div>
+        {tokenMsg && <p className="mb-2 text-sm" style={{ color: "var(--color-destructive)" }}>{tokenMsg}</p>}
+        {tokens.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            {tokens.map((t) => (
+              <div key={t.id} className="flex items-center justify-between gap-2 rounded-[12px] px-3 py-2"
+                   style={{ background: "var(--color-muted)" }}>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold" style={{ color: t.revoked ? "var(--color-muted-foreground)" : "var(--color-foreground)" }}>
+                    {t.name}{t.revoked ? " · revoked" : ""}
+                  </p>
+                  <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+                    {t.last_used_at ? `last used ${new Date(t.last_used_at).toLocaleDateString()}` : "never used"}
+                  </p>
+                </div>
+                {!t.revoked && (
+                  <Button variant="ghost" onClick={() => void revokeToken(t.id)}>
+                    <Trash2 size={14} aria-hidden /> Revoke
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {/* Restore backup (admin) */}
+      <Card className="mb-4 p-5">
+        <div className="mb-3 flex items-center gap-2">
+          <RotateCcw size={18} aria-hidden style={{ color: "var(--color-primary)" }} />
+          <h2 className="font-heading text-lg">Restore from backup</h2>
+        </div>
+        <p className="mb-3 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+          Upload a backup archive (.zip) or JSON export. <b style={{ color: "var(--color-foreground)" }}>
+          This replaces everything</b> with the backup's contents — logins come back too.
+        </p>
+        <input
+          type="file"
+          accept=".zip,.json"
+          className="hidden"
+          onChange={(e) => setRestoreFile(e.target.files?.[0] ?? null)}
+          ref={(el) => { restoreInputRef.current = el; }}
+        />
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={() => restoreInputRef.current?.click()} disabled={restoreBusy}>
+            {restoreFile ? restoreFile.name : "Choose backup file…"}
+          </Button>
+          <Button onClick={() => setConfirmRestore(true)} disabled={!restoreFile || restoreBusy}>
+            {restoreBusy ? "Restoring…" : "Restore"}
+          </Button>
+        </div>
+        {restoreMsg && (
+          <p className="mt-2 text-sm" style={{ color: "var(--color-foreground)" }}>{restoreMsg}</p>
+        )}
+      </Card>
+
       {/* Data */}
       <Card className="mb-4 p-5">
         <div className="mb-3 flex items-center gap-2">
@@ -387,6 +520,15 @@ export default function SettingsPage() {
           <Download size={16} aria-hidden /> Download JSON export
         </Button>
       </Card>
+
+      <ConfirmDialog
+        open={confirmRestore}
+        title="Restore this backup?"
+        detail={`Everything currently in LaTablée will be replaced by ${restoreFile?.name ?? "the backup"}. This can't be undone.`}
+        confirmLabel="Replace everything"
+        onConfirm={() => void doRestore()}
+        onCancel={() => setConfirmRestore(false)}
+      />
 
       {/* Account */}
       <Card className="mb-4 p-5">

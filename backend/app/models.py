@@ -45,6 +45,19 @@ class User(TimestampMixin, SQLModel, table=True):
     disabled: bool = False
 
 
+class ApiToken(TimestampMixin, SQLModel, table=True):
+    """Long-lived device tokens for integrations (Home Assistant, scripts).
+    Only the SHA-256 hash is stored; the raw token is shown once at creation."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    token_hash: str = Field(unique=True, index=True)
+    name: str
+    user_id: int = Field(foreign_key="user.id", index=True)
+    household_id: int | None = Field(default=None, foreign_key="household.id")
+    last_used_at: datetime | None = None
+    revoked_at: datetime | None = None
+
+
 class InviteLink(TimestampMixin, SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     token: str = Field(unique=True, index=True)

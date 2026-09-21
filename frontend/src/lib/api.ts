@@ -74,6 +74,7 @@ export interface Recipe {
   tags: string[];
   source_url: string | null;
   source_name: string | null;
+  image_b64?: string | null;
   image_path: string | null;
   is_favorite?: boolean;
   created_at: string;
@@ -294,6 +295,28 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+
+  // device tokens (integrations)
+  createToken: (name: string) =>
+    request<{ id: number; name: string; token: string; note: string }>("/tokens", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
+  tokens: () =>
+    request<{ tokens: { id: number; name: string; created_at: string; last_used_at: string | null; revoked: boolean }[] }>(
+      "/tokens",
+    ),
+  revokeToken: (id: number) => request<void>(`/tokens/${id}`, { method: "DELETE" }),
+
+  // backup restore
+  restoreBackup: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<{ restored: Record<string, number> }>("/export/restore", {
+      method: "POST",
+      body: form,
+    });
+  },
 
   // voice
   voiceCommand: (transcript: string) =>

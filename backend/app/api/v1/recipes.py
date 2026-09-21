@@ -26,6 +26,8 @@ class RecipeIn(BaseModel):
     # provenance (set by URL/photo imports, preserved on review-save)
     source_url: str | None = None
     source_name: str | None = None
+    # base64 image bytes from URL import — stored locally on save
+    image_b64: str | None = None
 
 
 def _search_text(r: Recipe) -> str:
@@ -98,7 +100,34 @@ def create_recipe(
     session.add(r)
     session.commit()
     session.refresh(r)
+    if payload.image_b64:
+        _store_b64_image(r, payload.image_b64)
+        session.add(r)
+        session.commit()
+        session.refresh(r)
     return _recipe_out(r)
+
+
+def _store_b64_image(recipe: Recipe, b64: str) -> None:
+    """Persist an imported image (validated, size-capped) to the local volume."""
+    import base64
+    import binascii
+    import imghdr
+    import uuid
+
+    from app.core.config import IMAGES_DIR, get_settings
+
+    try:
+        data = base64.b64decode(b64, validate=True)
+    except (binascii.Error, ValueError):
+        return
+    kind = imghdr.what(None, h=data)
+    if kind not in ("jpeg", "png", "webp") or len(data) > get_settings().max_upload_bytes:
+        return
+    dest = IMAGES_DIR / f"recipe-{recipe.id}-{uuid.uuid4().hex[:8]}.{kind}"
+    IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(data)
+    recipe.image_path = str(dest.relative_to(IMAGES_DIR.parent))
 
 
 @router.get("/{recipe_id}")
@@ -118,7 +147,7 @@ def update_recipe(
     session: Annotated[Session, Depends(get_session)],
 ) -> dict:
     r = get_recipe_or_404(recipe_id, session, user)
-    data = payload.model_dump()
+    data = payload.model_dump(exclude={"image_b64"})
     for k, v in data.items():
         setattr(r, k, v)
     r.ingredients = normalize_ingredient_units(payload.ingredients)

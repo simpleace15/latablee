@@ -3,6 +3,20 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.4.1] — 2026-09-21
+
+### Added
+- **Device tokens:** Settings → Device tokens mints long-lived `lat_…` keys for
+  integrations (Home Assistant, scripts). Shown once, hashed at rest, revocable,
+  last-used tracked. Accepted by every authed endpoint (JWT still primary).
+- **Backup restore:** Settings → Restore from backup (admin) wipes and restores
+  from a backup archive (.zip) or JSON export — with a confirm dialog. Recipes,
+  plan, lists, images, and user logins (public_id + password hash) all survive
+  the round trip; export now includes users + favorites + source provenance.
+- **URL import fetches the image:** recipe photos are downloaded at import time
+  (schema.org image first, then og:image/twitter:image) and stored locally on
+  save — no more hotlinked photos that die when the source site changes.
+
 ## [0.4.0] — 2026-09-21
 
 ### Added

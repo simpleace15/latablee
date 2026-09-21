@@ -8,7 +8,14 @@ from sqlmodel import Session, select
 
 from app.core.config import DATA_DIR, IMAGES_DIR
 from app.db.engine import get_engine
-from app.models import Household, MealPlanEntry, Recipe, ShoppingList, ShoppingListItem
+from app.models import (
+    Household,
+    MealPlanEntry,
+    Recipe,
+    ShoppingList,
+    ShoppingListItem,
+    User,
+)
 
 
 def export_json() -> dict:
@@ -16,20 +23,30 @@ def export_json() -> dict:
         return {
             "exported_at": datetime.now(UTC).isoformat(),
             "household": [dict(row) for row in session.exec(select(Household)).all()],
+            "users": [_user_row(u) for u in session.exec(select(User)).all()],
             "recipes": [_recipe_row(r) for r in session.exec(select(Recipe)).all()],
             "plan": [_plan_row(p) for p in session.exec(select(MealPlanEntry)).all()],
             "lists": [_list_row(session, lst) for lst in session.exec(select(ShoppingList)).all()],
         }
 
 
+def _user_row(u: User) -> dict:
+    # password_hash included: a backup must restore working logins. File is local-only.
+    return {"id": u.id, "public_id": u.public_id, "name": u.name, "role": u.role,
+            "household_id": u.household_id, "password_hash": u.password_hash,
+            "disabled": u.disabled}
+
+
 def _recipe_row(r: Recipe) -> dict:
     return {"id": r.id, "title": r.title, "description": r.description,
             "servings": r.servings, "instructions": r.instructions,
-            "ingredients": r.ingredients, "tags": r.tags, "image_path": r.image_path}
+            "ingredients": r.ingredients, "tags": r.tags, "image_path": r.image_path,
+            "is_favorite": r.is_favorite, "source_url": r.source_url,
+            "source_name": r.source_name}
 
 
 def _plan_row(p: MealPlanEntry) -> dict:
-    return {"id": p.id, "date": p.planned_date.isoformat(), "slot": p.slot,
+    return {"id": p.id, "planned_date": p.planned_date.isoformat(), "slot": p.slot,
             "recipe_id": p.recipe_id, "title_override": p.title_override}
 
 
@@ -42,7 +59,7 @@ def _list_row(session: Session, lst: ShoppingList) -> dict:
 
 def write_json_export() -> Path:
     dest = DATA_DIR / "exports" / f"latablee-export-{datetime.now(UTC):%Y%m%d-%H%M%S}.json"
-    dest.write_text(json.dumps(export_json(), indent=2))
+    dest.write_text(json.dumps(export_json(), indent=2, default=str))
     return dest
 
 
@@ -53,7 +70,7 @@ def build_backup_archive() -> Path:
     with zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED) as zf:
         if db_path.exists():
             zf.write(db_path, arcname=db_path.name)
-        json_bytes = json.dumps(export_json(), indent=2).encode()
+        json_bytes = json.dumps(export_json(), indent=2, default=str).encode()
         zf.writestr("export.json", json_bytes)
         if IMAGES_DIR.exists():
             for img in IMAGES_DIR.iterdir():

@@ -164,6 +164,22 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
+  // migration import
+  migratePreview: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<{ would_import: number; skipped: number; format: string; with_images: number }>(
+      "/migrate/preview", { method: "POST", body: form },
+    );
+  },
+  migrateRun: (file: File, loadImages = true) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<{ imported: number; failed: { title: string; error: string }[]; skipped: number; format: string }>(
+      `/migrate?load_images=${loadImages ? "true" : "false"}`, { method: "POST", body: form },
+    );
+  },
+
   // admin
   seedDemo: () =>
     request<{ seeded: boolean; reason?: string; recipes?: number; admin_user?: string }>(

@@ -3,6 +3,31 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.3.0] — 2026-09-21
+
+### Added
+- **Migration import** (Settings → "Import from Mealie or other apps"): upload a
+  Mealie backup zip (current database.json format or legacy per-recipe folders),
+  a zip of schema.org JSON-LD recipe files (Tandoor/Nextcloud exports), or a
+  single recipe JSON. Recipes, photos, tags, prep/cook times (ISO-8601 parsed),
+  and source links all come across. Dry-run preview before anything is written;
+  admin-only (`POST /api/v1/migrate[/preview]`), documented in docs/API.md.
+- Offline check-off queue: grocery check-offs made offline queue in localStorage
+  and sync automatically on reconnect, with an outbox banner.
+- Delete confirmations on all destructive actions (recipe, plan entry, list item).
+- Source button/link preserved on URL-imported recipes (RecipeIn now persists
+  source_url/source_name).
+- Demo-data loading: `python -m app.seed` CLI args, `docker compose --profile
+  seed run --rm seed`, and a Settings admin button (`POST /api/v1/admin/seed`).
+- docs/API.md — full API guide; every curl example live-verified against a
+  running stack.
+
+### Fixed
+- Recipe URL import flattened all schema.org recipeInstructions shapes (ItemList
+  dicts, HowToSection groups, HowToStep dicts) — steps no longer leak schema keys
+  like @type/numberOfItems/itemListElement.
+- Photo-import pipeline verified end-to-end (OpenAI-compatible vision endpoint).
+
 ## [0.2.0] — 2026-09-20
 
 ### Added

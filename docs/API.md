@@ -168,6 +168,35 @@ curl -sS http://localhost:3000/api/v1/export/json -H "Authorization: Bearer $TOK
 curl -sS http://localhost:3000/api/v1/export/archive -H "Authorization: Bearer $TOKEN" -o latablee-backup.tar.gz
 ```
 
+## Migration import (from Mealie or others)
+
+Bulk-load an existing collection — admin-only, preview-then-commit:
+
+```bash
+# 1) preview (dry run — nothing written)
+curl -sS -X POST http://localhost:3000/api/v1/migrate/preview \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -F "file=@mealie-backup.zip"
+# {"would_import": 214, "skipped": 2, "format": "mealie-backup", "with_images": 180}
+
+# 2) commit
+curl -sS -X POST "http://localhost:3000/api/v1/migrate?load_images=true" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -F "file=@mealie-backup.zip"
+# {"imported": 214, "failed": [], "skipped": 2, "format": "mealie-backup"}
+```
+
+Accepted inputs:
+- **Mealie backup zip** (Mealie: Settings → Admin → Backups → Create Backup) —
+  current `database.json` format and legacy `recipes/<slug>/<slug>.json` layout
+- **Zip of schema.org JSON-LD recipe files** (Tandoor, Nextcloud Cookbook exports)
+- **Single JSON file** — one recipe object or an array
+
+Carried across: title, description, servings, prep/cook times (ISO-8601 `PT...`
+parsed), instructions (all ItemList/HowToStep shapes flattened), ingredients
+(raw strings preserved), tags/categories, source URL, and per-recipe images.
+Per-recipe failures don't abort the batch — they're reported at the end.
+
 ## Admin
 
 ```bash

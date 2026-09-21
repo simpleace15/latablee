@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { api, type Household, type User } from "@/lib/api";
 import { Button, Card, Input, Spinner } from "@/components/ui";
 import AppLayout from "../AppLayout";
-import { Bot, Database, Download, Link2, Moon, Sun, Users } from "lucide-react";
+import { Bot, Database, Download, Link2, Moon, PackageOpen, Sun, Users } from "lucide-react";
 
 const TIMEZONES = [
   "America/Denver", "America/Chicago", "America/New_York", "America/Los_Angeles",
@@ -20,6 +20,10 @@ export default function SettingsPage() {
   const [inviteError, setInviteError] = useState("");
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState("");
+  const [migFile, setMigFile] = useState<File | null>(null);
+  const [migPreview, setMigPreview] = useState<{ would_import: number; skipped: number; format: string; with_images: number } | null>(null);
+  const [migBusy, setMigBusy] = useState(false);
+  const [migMsg, setMigMsg] = useState("");
 
   // llm settings
   const [llm, setLlm] = useState({ base_url: "", api_key: "", model: "", vision_model: "" });
@@ -56,6 +60,36 @@ export default function SettingsPage() {
     else window.localStorage.removeItem("latablee_theme");
     if (next) document.documentElement.dataset.theme = next;
     else delete document.documentElement.dataset.theme;
+  }
+
+  async function migPreviewRun() {
+    setMigMsg("");
+    if (!migFile) return;
+    setMigBusy(true);
+    try {
+      setMigPreview(await api.migratePreview(migFile));
+    } catch (err) {
+      setMigMsg(err instanceof Error ? err.message : "Couldn't read that file");
+      setMigPreview(null);
+    } finally {
+      setMigBusy(false);
+    }
+  }
+
+  async function migRun() {
+    if (!migFile) return;
+    setMigBusy(true);
+    try {
+      const res = await api.migrateRun(migFile);
+      const fails = res.failed.length ? ` (${res.failed.length} failed: ${res.failed.slice(0, 2).map((f) => f.title).join(", ")}…)` : "";
+      setMigMsg(`Imported ${res.imported} recipe${res.imported === 1 ? "" : "s"}${fails}.`);
+      setMigPreview(null);
+      setMigFile(null);
+    } catch (err) {
+      setMigMsg(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setMigBusy(false);
+    }
   }
 
   async function seedDemo() {
@@ -200,6 +234,44 @@ export default function SettingsPage() {
               {seedMsg}
             </p>
           )}
+        </Card>
+      )}
+
+      {/* Migration import (admin only) */}
+      {user?.role === "admin" && (
+        <Card className="mb-4 p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <PackageOpen size={18} aria-hidden style={{ color: "var(--color-primary)" }} />
+            <h2 className="font-heading text-lg">Import from Mealie or other apps</h2>
+          </div>
+          <p className="mb-3 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+            Bring your existing collection: upload a Mealie backup zip (Settings → Backups →
+            Create Backup in Mealie), a zip of recipe JSON files, or a single recipe JSON.
+            Recipes, photos, tags, and source links all come across. Nothing is saved until
+            you confirm the preview.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="file" accept=".zip,.json"
+              onChange={(e) => { setMigFile(e.target.files?.[0] ?? null); setMigPreview(null); setMigMsg(""); }}
+              className="text-sm"
+              style={{ color: "var(--color-foreground)" }}
+            />
+            <Button onClick={migPreviewRun} disabled={!migFile || migBusy}>
+              {migBusy ? "Reading…" : "Preview"}
+            </Button>
+          </div>
+          {migPreview && (
+            <div className="mt-3 flex flex-wrap items-center gap-3 rounded-[12px] px-3 py-2.5 text-sm" style={{ background: "var(--color-muted)" }}>
+              <span>
+                Found <b>{migPreview.would_import}</b> recipe{migPreview.would_import === 1 ? "" : "s"}
+                {migPreview.with_images > 0 && <> with <b>{migPreview.with_images}</b> photo{migPreview.with_images === 1 ? "" : "s"}</>}
+                {migPreview.skipped > 0 && <>, {migPreview.skipped} skipped</>} — format: {migPreview.format}
+              </span>
+              <Button onClick={migRun} disabled={migBusy}>{migBusy ? "Importing…" : "Import now"}</Button>
+            </div>
+          )}
+          {migMsg && <p className="mt-3 break-words text-sm" style={{ color: "var(--color-foreground)" }}>{migMsg}</p>}
         </Card>
       )}
 

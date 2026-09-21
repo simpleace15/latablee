@@ -10,6 +10,7 @@ from app.api.v1 import (
                         import_router,
                         lists,
                         llm,
+                        migrate,
                         planner,
                         recipes,
                         voice,
@@ -27,3 +28,4 @@ api_router.include_router(voice.router, prefix="/voice", tags=["voice"])
 api_router.include_router(export.router, prefix="/export", tags=["export"])
 api_router.include_router(events.router, prefix="/events", tags=["events"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
+api_router.include_router(migrate.router, prefix="/migrate", tags=["migrate"])

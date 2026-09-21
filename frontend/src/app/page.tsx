@@ -72,6 +72,7 @@ export default function TodayPage() {
         <p className="mb-4 text-sm font-semibold" style={{ color: "var(--color-destructive)" }}>{error}</p>
       )}
 
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       {/* What's for dinner — the one big card (WAF) */}
       <Link href="/plan/" className="pressable block" aria-label="Open the meal plan">
         <Card className="p-5">
@@ -93,7 +94,7 @@ export default function TodayPage() {
       </Link>
 
       {/* Shopping list summary */}
-      <Link href="/list/" className="pressable mt-4 block" aria-label="Open the shopping list">
+      <Link href="/list/" className="pressable mt-4 block lg:mt-0" aria-label="Open the shopping list">
         <Card className="p-5">
           <div className="flex items-center gap-3">
             <ShoppingBasket size={22} style={{ color: "var(--color-accent)" }} aria-hidden />
@@ -120,6 +121,7 @@ export default function TodayPage() {
           )}
         </Card>
       </Link>
+      </div>
 
       {/* Quick actions */}
       <div className="mt-6 flex gap-3">

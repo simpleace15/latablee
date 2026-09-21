@@ -90,7 +90,7 @@ export default function RecipesPage() {
           title="No recipes yet. Add one by hand, from a link, or snap a photo of a cookbook page."
         />
       ) : (
-        <div className="grid gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {recipes.map((r) => (
             <Link key={r.id} href={`/recipes/view/?id=${r.id}`} className="pressable block">
               <Card className="flex items-center justify-between gap-3 p-4">

@@ -154,3 +154,32 @@ def test_events_log(client, admin):
     resp = client.get("/api/v1/events", headers=admin)
     assert resp.status_code == 200
     assert any(e["event"] == "meal_plan_updated" for e in resp.json()["events"])
+
+
+def test_flatten_instructions_itemlist_dict():
+    """ItemList dicts (@type/numberOfItems/itemListElement) must not leak keys as steps."""
+    from app.services.recipe_url_import import _flatten_instructions
+
+    itemlist = {"@type": "ItemList", "numberOfItems": 2,
+                "itemListElement": [{"@type": "HowToStep", "text": "Brown the beef."},
+                                    {"@type": "HowToStep", "text": "Simmer 30 min."}]}
+    out = _flatten_instructions(itemlist)
+    assert out == ["Brown the beef.", "Simmer 30 min."]
+    assert all("@" not in s and "itemList" not in s for s in out)
+
+    sections = [{"@type": "HowToSection", "name": "Prep",
+                 "itemListElement": [{"@type": "HowToStep", "text": "Chop."}]},
+                {"@type": "HowToStep", "text": "Cook."}]
+    assert _flatten_instructions(sections) == ["Chop.", "Cook."]
+
+
+def test_to_draft_handles_itemlist_instructions():
+    from app.services.recipe_url_import import _to_draft
+
+    draft = _to_draft({
+        "name": "Chili",
+        "recipeInstructions": {"@type": "ItemList", "numberOfItems": 2,
+                               "itemListElement": [{"text": "Brown beef."}, {"text": "Simmer."}]},
+    }, url="https://example.com/chili")
+    assert draft["instructions"] == ["Brown beef.", "Simmer."]
+

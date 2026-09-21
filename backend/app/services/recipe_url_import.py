@@ -69,11 +69,7 @@ def _to_draft(recipe: dict[str, Any], url: str) -> dict[str, Any]:
         else:
             ingredients.append({"name": str(raw), "raw": str(raw), "quantity": None,
                                 "unit": None})
-    steps = recipe.get("recipeInstructions") or []
-    if steps and isinstance(steps, list) and isinstance(steps[0], dict):
-        steps = [s.get("text", "") for s in steps]
-    if isinstance(steps, str):
-        steps = [steps]
+    steps = _flatten_instructions(recipe.get("recipeInstructions") or [])
     draft = {
         "title": (recipe.get("name") or "").strip() or "Imported recipe",
         "description": _clean(recipe.get("description") or ""),
@@ -90,6 +86,46 @@ def _to_draft(recipe: dict[str, Any], url: str) -> dict[str, Any]:
         draft["source_name"] = recipe["author"].get("name") or "Web"
     return draft
 
+
+
+def _flatten_instructions(value: Any) -> list[str]:
+    """Normalize every HowTo shape schema.org allows into plain step strings.
+
+    Sites emit: plain list[str], list[HowToStep dicts], a single HowToSection
+    list-of-sections, or an ItemList dict ({@type, numberOfItems,
+    itemListElement: [...]}) — the last was previously iterated by its keys,
+    dumping '@type'/'numberOfItems' into the recipe as fake steps.
+    """
+    out: list[str] = []
+
+    def walk(v: Any) -> None:
+        if v is None:
+            return
+        if isinstance(v, dict):
+            if v.get("itemListElement"):
+                walk(v["itemListElement"])
+            elif v.get("itemList"):
+                walk(v["itemList"])
+            elif v.get("steps"):
+                walk(v["steps"])
+            elif v.get("text") is not None:
+                text = _clean(v.get("text"))
+                if text:
+                    out.append(text)
+            # name-only HowToStep: use the name as a step heading
+            elif v.get("name") and not any(k in v for k in ("@type", "itemListElement")):
+                out.append(_clean(v["name"]))
+            return
+        if isinstance(v, (list, tuple)):
+            for child in v:
+                walk(child)
+            return
+        text = _clean(v)
+        if text:
+            out.append(text)
+
+    walk(value)
+    return out
 
 def _parse_ingredient_text(raw: str) -> dict[str, Any]:
     """Split '2 cups flour' into quantity/unit/name; keep the raw string for editing."""

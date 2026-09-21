@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, type ShoppingList } from "@/lib/api";
 import { Button, Card, EmptyState, Input, Spinner } from "@/components/ui";
 import AppLayout from "../AppLayout";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CheckCircle2, Circle, ListChecks, Plus, ShoppingBasket, Trash2 } from "lucide-react";
 
 export default function ListPage() {
@@ -12,6 +13,7 @@ export default function ListPage() {
   const [newItem, setNewItem] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<{ listId: number; itemId: number; name: string } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,8 +53,11 @@ export default function ListPage() {
     await load();
   }
 
-  async function removeItem(listId: number, itemId: number) {
-    await api.removeListItem(listId, itemId);
+  async function removeItem() {
+    const t = pendingDelete;
+    if (!t) return;
+    await api.removeListItem(t.listId, t.itemId);
+    setPendingDelete(null);
     await load();
   }
 
@@ -134,7 +139,7 @@ export default function ListPage() {
                 <span className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>
                   {item.quantity ?? ""} {item.unit ?? ""}
                 </span>
-                <button className="pressable rounded-full p-1.5" onClick={() => removeItem(lst.id, item.id)}
+                <button className="pressable rounded-full p-1.5" onClick={() => setPendingDelete({ listId: lst.id, itemId: item.id, name: item.name })}
                   aria-label={`Remove ${item.name}`} style={{ color: "var(--color-muted-foreground)" }}>
                   <Trash2 size={16} aria-hidden />
                 </button>
@@ -153,7 +158,7 @@ export default function ListPage() {
                       <CheckCircle2 size={22} aria-hidden />
                     </button>
                     <span className="item-name struck flex-1 truncate text-base">{item.name}</span>
-                    <button className="pressable rounded-full p-1.5" onClick={() => removeItem(lst.id, item.id)}
+                    <button className="pressable rounded-full p-1.5" onClick={() => setPendingDelete({ listId: lst.id, itemId: item.id, name: item.name })}
                       aria-label={`Remove ${item.name}`} style={{ color: "var(--color-muted-foreground)" }}>
                       <Trash2 size={16} aria-hidden />
                     </button>
@@ -168,6 +173,14 @@ export default function ListPage() {
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Remove this item?"
+        detail={pendingDelete?.name}
+        onConfirm={removeItem}
+        onCancel={() => setPendingDelete(null)}
+      />
     </AppLayout>
   );
 }

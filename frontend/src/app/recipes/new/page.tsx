@@ -105,7 +105,7 @@ export default function NewRecipePage() {
   }
 
   function loadIntoForm(p: Partial<Recipe>) {
-    setDraft({ ...emptyRecipe(), ...p });
+    setDraft({ ...emptyRecipe(), ...p, source_url: p.source_url ?? null, source_name: p.source_name ?? null });
     setStepsText((p.instructions ?? []).join("\n"));
     setParsed(null);
     setTab("manual");
@@ -147,6 +147,17 @@ export default function NewRecipePage() {
           <p className="text-sm font-semibold" style={{ color: "var(--color-muted-foreground)" }}>
             Looks good? Review, tweak, then save.
           </p>
+          {parsed.source_url && (
+            <a
+              href={parsed.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold underline"
+              style={{ color: "var(--color-primary)" }}
+            >
+              <Globe size={14} aria-hidden /> View original at {parsed.source_name || "source"}
+            </a>
+          )}
           <div className="mt-4 flex flex-col gap-4">
             <Input label="Title" value={parsed.title ?? ""} onChange={(e) => setParsed({ ...parsed, title: e.target.value })} />
             <Input label="Description" value={parsed.description ?? ""} onChange={(e) => setParsed({ ...parsed, description: e.target.value })} />

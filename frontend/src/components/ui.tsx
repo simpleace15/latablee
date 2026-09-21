@@ -50,11 +50,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 type CardProps = {
   children: ReactNode;
   className?: string;
+  onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
 };
 
-export function Card({ children, className = "" }: CardProps) {
+export function Card({ children, className = "", onClick }: CardProps) {
   return (
     <div
+      onClick={onClick}
       className={`rounded-[var(--radius-card)] border bg-card ${className}`}
       style={{
         borderColor: "var(--color-border)",

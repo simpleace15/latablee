@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, type Recipe } from "@/lib/api";
 import { Button, Card, Spinner } from "@/components/ui";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import AppLayout from "../../AppLayout";
-import { ArrowLeft, ChefHat, Clock, ImagePlus, Trash2 } from "lucide-react";
+import { ArrowLeft, ChefHat, Clock, ExternalLink, ImagePlus, Trash2 } from "lucide-react";
 
 function RecipeDetailView() {
   const router = useRouter();
@@ -18,6 +19,8 @@ function RecipeDetailView() {
   const [cookMode, setCookMode] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   const [servings, setServings] = useState(0);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function load() {
@@ -44,8 +47,14 @@ function RecipeDetailView() {
 
   async function remove() {
     if (!recipe?.id) return;
-    await api.deleteRecipe(recipe.id);
-    router.push("/recipes/");
+    setDeleting(true);
+    try {
+      await api.deleteRecipe(recipe.id);
+      router.push("/recipes/");
+    } finally {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
   }
 
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -172,6 +181,18 @@ function RecipeDetailView() {
         {recipe.source_name && <span>via {recipe.source_name}</span>}
       </div>
 
+      {recipe.source_url && (
+        <a
+          href={recipe.source_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="pressable mb-4 inline-flex items-center gap-2 rounded-[var(--radius-control)] border px-3.5 py-2 text-sm font-semibold"
+          style={{ borderColor: "var(--color-border)", color: "var(--color-primary)" }}
+        >
+          <ExternalLink size={15} aria-hidden /> Source{recipe.source_name ? ` · ${recipe.source_name}` : ""}
+        </a>
+      )}
+
       <h2 className="mb-2 font-heading text-xl">Ingredients</h2>
       <Card className="mb-5 p-4">
         <ul className="flex flex-col gap-2.5">
@@ -204,10 +225,19 @@ function RecipeDetailView() {
       </div>
 
       <div className="mt-8 flex justify-center">
-        <Button variant="danger" onClick={remove}>
+        <Button variant="danger" onClick={() => setConfirmDelete(true)}>
           <Trash2 size={16} aria-hidden /> Delete recipe
         </Button>
       </div>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Delete this recipe?"
+        detail={`"${recipe.title}" and its photo will be gone for good.`}
+        busy={deleting}
+        onConfirm={remove}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </AppLayout>
   );
 }

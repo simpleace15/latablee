@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, type PlanEntry, type Recipe } from "@/lib/api";
 import { Button, Card, Chip, EmptyState, Input, Spinner } from "@/components/ui";
 import AppLayout from "../AppLayout";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CalendarDays, Plus, Trash2 } from "lucide-react";
 
 const SLOTS = ["breakfast", "lunch", "dinner", "other"] as const;
@@ -39,6 +40,7 @@ export default function PlanPage() {
   const [pickTitle, setPickTitle] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<{ id: number; label: string } | null>(null);
 
   const load = useCallback(async (start?: string) => {
     setLoading(true);
@@ -82,8 +84,10 @@ export default function PlanPage() {
     }
   }
 
-  async function remove(id: number) {
-    await api.deletePlanEntry(id);
+  async function remove() {
+    if (!pendingDelete) return;
+    await api.deletePlanEntry(pendingDelete.id);
+    setPendingDelete(null);
     await load(weekStart);
   }
 
@@ -165,7 +169,7 @@ export default function PlanPage() {
                   <button
                     className="pressable rounded-full p-2"
                     style={{ color: "var(--color-muted-foreground)" }}
-                    onClick={() => remove(e.id)}
+                    onClick={() => setPendingDelete({ id: e.id, label: `${SLOT_LABEL[e.slot as Slot] || e.slot} — ${e.title_override || e.recipe_title || "Planned"}` })}
                     aria-label={`Remove ${e.slot} on ${iso}`}
                   >
                     <Trash2 size={16} aria-hidden />
@@ -227,6 +231,14 @@ export default function PlanPage() {
           </Card>
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Remove from the plan?"
+        detail={pendingDelete?.label}
+        onConfirm={remove}
+        onCancel={() => setPendingDelete(null)}
+      />
     </AppLayout>
   );
 }

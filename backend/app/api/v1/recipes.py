@@ -23,6 +23,9 @@ class RecipeIn(BaseModel):
     instructions: list[str] = []
     ingredients: list[Ingredient] = []
     tags: list[str] = []
+    # provenance (set by URL/photo imports, preserved on review-save)
+    source_url: str | None = None
+    source_name: str | None = None
 
 
 def _search_text(r: Recipe) -> str:
@@ -46,6 +49,8 @@ def _to_recipe(payload: RecipeIn, user: User) -> Recipe:
         instructions=payload.instructions,
         ingredients=normalized,
         tags=payload.tags,
+        source_url=payload.source_url,
+        source_name=payload.source_name,
         created_by=user.id,
         household_id=user.household_id,
     )

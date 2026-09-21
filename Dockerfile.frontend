@@ -9,7 +9,7 @@ ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
 RUN npm run build
 
 FROM nginx:1.27-alpine
-COPY --from=build /build/public /usr/share/nginx/html
+COPY --from=build /build/out/ /usr/share/nginx/html/
 # basePath-aware SPA fallback + API proxy target provided via env at runtime
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80

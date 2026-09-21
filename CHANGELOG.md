@@ -3,6 +3,13 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.3.1] — 2026-09-21
+
+### Added
+- Sign out: button in Settings (Account card, shows signed-in name/role) and
+  pinned at the bottom of the desktop sidebar. Clears the stored token and
+  returns to login.
+
 ## [0.3.0] — 2026-09-21
 
 ### Added

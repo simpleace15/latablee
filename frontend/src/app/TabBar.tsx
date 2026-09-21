@@ -1,8 +1,8 @@
 "use client";
 
-import { CalendarDays, ChefHat, ListCheck, Settings, Sun } from "lucide-react";
+import { CalendarDays, ChefHat, ListCheck, LogOut, Settings, Sun } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const tabs = [
   { href: "/", label: "Today", icon: Sun },
@@ -44,9 +44,15 @@ export function TabBar() {
   );
 }
 
-/** Left sidebar for desktop (lg+): persistent nav, same destinations. */
+/** Left sidebar for desktop (lg+): persistent nav, same destinations, sign-out pinned. */
 export function SideNav() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function signOut() {
+    await import("@/lib/api").then((m) => m.setToken(null));
+    router.replace("/login/");
+  }
   return (
     <aside
       aria-label="Main"
@@ -76,9 +82,19 @@ export function SideNav() {
           );
         })}
       </nav>
-      <p className="mt-auto px-3 text-xs" style={{ color: "var(--color-muted-foreground)" }}>
-        Self-hosted · for the whole table
-      </p>
+      <div className="mt-auto border-t pt-3" style={{ borderColor: "var(--color-border)" }}>
+        <button
+          onClick={signOut}
+          className="pressable flex w-full items-center gap-3 rounded-[var(--radius-control)] px-3 py-2.5 text-base font-semibold"
+          style={{ color: "var(--color-muted-foreground)" }}
+        >
+          <LogOut size={20} strokeWidth={2} aria-hidden />
+          Sign out
+        </button>
+        <p className="px-3 pt-2 text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+          Self-hosted · for the whole table
+        </p>
+      </div>
     </aside>
   );
 }

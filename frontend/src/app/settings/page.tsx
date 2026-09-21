@@ -1,10 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, type Household, type User } from "@/lib/api";
 import { Button, Card, Input, Spinner } from "@/components/ui";
 import AppLayout from "../AppLayout";
-import { Bot, Database, Download, Link2, Moon, PackageOpen, Sun, Users } from "lucide-react";
+import { Bot, Database, Download, Link2, LogOut, Moon, PackageOpen, Sun, Users } from "lucide-react";
 
 const TIMEZONES = [
   "America/Denver", "America/Chicago", "America/New_York", "America/Los_Angeles",
@@ -12,6 +13,7 @@ const TIMEZONES = [
 ];
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [household, setHousehold] = useState<Household | null>(null);
   const [loading, setLoading] = useState(true);
@@ -90,6 +92,11 @@ export default function SettingsPage() {
     } finally {
       setMigBusy(false);
     }
+  }
+
+  async function signOut() {
+    await import("@/lib/api").then((m) => m.setToken(null));
+    router.replace("/login/");
   }
 
   async function seedDemo() {
@@ -329,6 +336,21 @@ export default function SettingsPage() {
         </div>
         <Button onClick={downloadExport}>
           <Download size={16} aria-hidden /> Download JSON export
+        </Button>
+      </Card>
+
+      {/* Account */}
+      <Card className="mb-4 p-5">
+        <div className="mb-3 flex items-center gap-2">
+          <LogOut size={18} aria-hidden style={{ color: "var(--color-primary)" }} />
+          <h2 className="font-heading text-lg">Account</h2>
+        </div>
+        <p className="mb-3 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+          Signed in as <b style={{ color: "var(--color-foreground)" }}>{user?.name}</b>
+          {user?.role === "admin" && <> · admin</>}
+        </p>
+        <Button variant="ghost" onClick={signOut}>
+          <LogOut size={16} aria-hidden /> Sign out
         </Button>
       </Card>
     </AppLayout>

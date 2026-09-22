@@ -4,6 +4,9 @@ services:
   latablee:
     build: .
     image: latablee
+    # Source-built image (no Docker Hub repo) — never pull, always build.
+    # Without this, "update stack" / `docker compose pull` errors on the missing Hub image.
+    pull_policy: build
     environment:
       - LATABLEE_SECRET_KEY=${LATABLEE_SECRET_KEY:?set LATABLEE_SECRET_KEY in .env}
       - LATABLEE_DATABASE_URL=${LATABLEE_DATABASE_URL:-sqlite:///./data/latablee.db}
@@ -43,6 +46,7 @@ services:
     profiles: ["seed"]
     build: .
     image: latablee
+    pull_policy: build
     command: ["python", "-m", "app.seed"]
     environment:
       - LATABLEE_SECRET_KEY=${LATABLEE_SECRET_KEY:-seed-run-no-auth-needed}

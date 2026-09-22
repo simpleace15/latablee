@@ -44,6 +44,19 @@ docker compose up -d
 
 Open `http://<tower-ip>:3000`. First login creates the admin account + household.
 
+## Updating LaTablée
+
+```bash
+cd /mnt/user/appdata/latablee
+git pull
+docker compose build latablee
+docker compose up -d latablee
+```
+
+The image is built from source (there is no Docker Hub image), so never use
+"update stack"/`docker compose pull` alone — with `pull_policy: build` it now
+falls back to building instead of erroring.
+
 ### Optional: Postgres instead of SQLite
 
 ```bash

@@ -8,15 +8,26 @@ idea: the app succeeds only if it can be handed to a non-technical spouse and im
 - 📱 Mobile-first PWA — installable, works in a dead-zone grocery aisle, scales up to desktop
 - 🔌 Works standalone; optional integrations attach via the versioned REST API ([API guide](docs/API.md))
 
+## Prerequisites
+
+- **Docker Engine 24+ with the compose plugin** (`docker compose version` to check) — that's it for deployment. Any Docker-capable host works: Unraid, Synology, a VPS, a Raspberry Pi 4+ (arm64 images build fine).
+- **2 GB+ free RAM** and a few GB of disk for recipes/images.
+- **A long random string for `LATABLEE_SECRET_KEY`** (the only required config): `openssl rand -hex 32`
+- Optional: any **OpenAI-compatible LLM endpoint** (Ollama, llama.cpp, LocalAI, cloud) for AI features — photo import, refill-week, freeform voice. Everything else works without one.
+- Developing from source instead? Python 3.12+, Node 22, and Docker for CI.
+
 ## Quickstart (Docker)
 
 ```bash
-git clone https://github.com/<your-account>/latablee.git
+git clone https://github.com/simpleace15/latablee.git
 cd latablee
 cp .env.example .env          # set LATABLEE_SECRET_KEY to a long random string!
 docker compose up -d
 # open http://localhost:3000 — first run walks you through household setup
 ```
+
+**Guides:** [Unraid deployment](docs/UNRAID.md) · [API reference](docs/API.md) ·
+[Home Assistant connector](https://github.com/simpleace15/latablee-ha)
 
 SQLite by default (zero-config). Prefer Postgres?
 

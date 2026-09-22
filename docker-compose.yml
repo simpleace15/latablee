@@ -1,37 +1,26 @@
-# LaTablée — one compose file, sensible volumes, first-run bootstrapping.
+# LaTablée — ONE container (option 3): FastAPI serves the API *and* the web UI.
 # Default: SQLite volume. Postgres profile: docker compose --profile postgres up -d
 services:
-  api:
+  latablee:
     build: .
-    image: latablee-api
+    image: latablee
     environment:
       - LATABLEE_SECRET_KEY=${LATABLEE_SECRET_KEY:?set LATABLEE_SECRET_KEY in .env}
       - LATABLEE_DATABASE_URL=${LATABLEE_DATABASE_URL:-sqlite:///./data/latablee.db}
       - LATABLEE_CORS_ORIGINS=${LATABLEE_CORS_ORIGINS:-http://localhost:3000}
       - LATABLEE_PUBLIC_ORIGIN=${LATABLEE_PUBLIC_ORIGIN:-http://localhost:3000}
+      # Web UI is baked in and served by the API (single-container mode)
+      - LATABLEE_STATIC_DIR=/srv/latablee/static
       # Optional: preconfigure the LLM here instead of via UI Settings
       - LATABLEE_LLM_BASE_URL=${LATABLEE_LLM_BASE_URL:-}
       - LATABLEE_LLM_API_KEY=${LATABLEE_LLM_API_KEY:-}
       - LATABLEE_LLM_MODEL=${LATABLEE_LLM_MODEL:-}
+      - LATABLEE_LLM_VISION_MODEL=${LATABLEE_LLM_VISION_MODEL:-}
     volumes:
       - latablee-data:/srv/latablee/data
     ports:
-      - "8000:8000"
+      - "3000:3000"
     restart: unless-stopped
-
-  web:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-      args:
-        # Serve under a subpath if you proxy at e.g. /latablee (HA ingress later)
-        NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-}
-    image: latablee-web
-    ports:
-      - "3000:80"
-    restart: unless-stopped
-    depends_on:
-      - api
 
   # Optional Postgres — activates with: docker compose --profile postgres up -d
   # then set LATABLEE_DATABASE_URL=postgresql://latablee:***@db:5432/latablee in your dotenv file
@@ -53,7 +42,7 @@ services:
   seed:
     profiles: ["seed"]
     build: .
-    image: latablee-api
+    image: latablee
     command: ["python", "-m", "app.seed"]
     environment:
       - LATABLEE_SECRET_KEY=${LATABLEE_SECRET_KEY:-seed-run-no-auth-needed}

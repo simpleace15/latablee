@@ -15,6 +15,7 @@ idea: the app succeeds only if it can be handed to a non-technical spouse and im
 - **A long random string for `LATABLEE_SECRET_KEY`** (the only required config): `openssl rand -hex 32`
 - Optional: any **OpenAI-compatible LLM endpoint** (Ollama, llama.cpp, LocalAI, cloud) for AI features — photo import, refill-week, freeform voice. Everything else works without one.
 - Developing from source instead? Python 3.12+, Node 22, and Docker for CI.
+- Deployment shape: **one container** — the API serves the built web UI directly on port 3000.
 
 ## Quickstart (Docker)
 

@@ -3,6 +3,23 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.4.2] — 2026-09-22
+
+### Changed
+- **Single-container deployment** — the default now. One image serves the
+  web UI *and* the API on port 3000 (FastAPI mounts the built SPA with a
+  catch-all fallback registered after the API router; deep links work).
+  The nginx frontend container is gone.
+- New env: `LATABLEE_STATIC_DIR` — set it to serve a UI build from the API
+  (the Dockerfile sets it automatically); unset keeps UI unserved.
+- `Dockerfile.frontend` + `frontend/nginx.conf` removed; the Node UI build
+  is a stage inside the main Dockerfile.
+- Version string corrected (was reporting 0.1.0 at `/api/health`; now 0.4.2).
+
+### For existing deployments
+- `docker compose down` then `up -d` — data volume (`latablee-data`) is
+  unchanged and carries over; port 3000 stays the only published port.
+
 ## [0.4.1] — 2026-09-21
 
 ### Added

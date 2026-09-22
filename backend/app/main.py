@@ -1,7 +1,6 @@
 # LaTablée FastAPI app — versioned REST API under /api/v1
 import logging
 import time
-from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,7 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import api_router
-from app.core.config import IMAGES_DIR, ensure_dirs, get_settings
+from app.core.config import IMAGES_DIR, STATIC_DIR, ensure_dirs, get_settings
 from app.db.engine import create_all
 
 app = FastAPI(
@@ -61,9 +60,24 @@ def download_archive():
     return FileResponse(path, filename=path.name, media_type="application/zip")
 
 
-# Serve the built frontend (PWA) if present — single-container deploys
-FRONTEND_DIST = Path("frontend/dist")
-if FRONTEND_DIST.is_dir():
-    app.mount("/app", StaticFiles(directory=str(FRONTEND_DIST / "app"), html=True), name="spa")
-
 app.include_router(api_router, prefix=get_settings().api_v1_prefix)
+
+# Single-container mode: serve the built web UI (Next.js static export) from the API.
+# Empty LATABLEE_STATIC_DIR (two-container nginx mode) disables it.
+# Registered LAST so the catch-all never shadows API routes above.
+if STATIC_DIR is not None:
+    from fastapi.responses import FileResponse, RedirectResponse
+
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
+
+    @app.get("/", include_in_schema=False)
+    def _root() -> RedirectResponse:
+        return RedirectResponse(url="/static/index.html")
+
+    # SPA fallback: any non-API GET without a file → the SPA shell (client router takes over)
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def _spa_fallback(full_path: str) -> FileResponse:
+        candidate = STATIC_DIR / full_path
+        if full_path and candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(STATIC_DIR / "index.html")

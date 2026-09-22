@@ -1,5 +1,6 @@
 # LaTablée backend config (12-factor via pydantic-settings)
 # All values overridable with LATABLEE_ prefixed env vars or a dotenv file
+import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -11,7 +12,7 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "LaTablée"
-    version: str = "0.1.0"
+    version: str = "0.4.2"
     api_v1_prefix: str = "/api/v1"
     debug: bool = False
 
@@ -64,6 +65,10 @@ def reload_settings() -> Settings:
 DATA_DIR = Path("data")
 IMAGES_DIR = DATA_DIR / "images"
 EXPORTS_DIR = DATA_DIR / "exports"
+
+# Single-container mode: directory containing the built web UI (Next.js static export).
+# Empty/unset → UI not served by the API (two-container nginx mode).
+STATIC_DIR: Path | None = Path(os.getenv("LATABLEE_STATIC_DIR", "")).resolve() if os.getenv("LATABLEE_STATIC_DIR", "").strip() else None
 
 
 def ensure_dirs() -> None:

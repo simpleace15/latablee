@@ -4,6 +4,10 @@ LaTablée runs on Unraid two ways: **Docker Compose (recommended)** or the
 **Compose Manager plugin** (Unraid 6.10+ has it built in as "Docker Compose
 Manager" from the Community Apps store). Both end up with the same containers.
 
+**Architecture: ONE container.** A single image serves the web UI *and* the
+API on port 3000 (FastAPI serves the built SPA directly). The only other
+container that can exist is an optional Postgres — and it's opt-in.
+
 ## Prerequisites (Unraid)
 
 - Unraid 6.11+ with **Docker enabled** (Settings → Docker).
@@ -20,6 +24,7 @@ Manager" from the Community Apps store). Both end up with the same containers.
    at that path).
 3. From the plugin UI: **Compose Up**. First run builds both images (~5 min).
 4. Web UI: `http://<tower-ip>:3000` — first run walks through household setup.
+   (First run builds one image; the Node UI build takes a few minutes.)
 
 ## Option B — plain docker compose in the shell
 

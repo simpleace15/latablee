@@ -3,6 +3,18 @@
 import { CalendarDays, ChefHat, ListCheck, LogOut, Settings, Sun } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
+function useAppVersion() {
+  const [version, setVersion] = useState<string | null>(null);
+  useEffect(() => {
+    fetch("/api/health")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setVersion(d?.version ?? null))
+      .catch(() => undefined);
+  }, []);
+  return version;
+}
 
 const tabs = [
   { href: "/", label: "Today", icon: Sun },
@@ -48,6 +60,7 @@ export function TabBar() {
 export function SideNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const version = useAppVersion();
 
   async function signOut() {
     await import("@/lib/api").then((m) => m.setToken(null));
@@ -92,7 +105,7 @@ export function SideNav() {
           Sign out
         </button>
         <p className="px-3 pt-2 text-xs" style={{ color: "var(--color-muted-foreground)" }}>
-          Self-hosted · for the whole table
+          Self-hosted · for the whole table{version ? ` · v${version}` : ""}
         </p>
       </div>
     </aside>

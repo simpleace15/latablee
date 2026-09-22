@@ -3,6 +3,19 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.4.5] — 2026-09-22
+
+### Fixed
+- **Deep links served the Today page.** Next.js static export writes
+  directory indexes (`/settings/index.html`), but the SPA fallback only
+  served exact files — so `/settings` (no trailing slash, e.g. after a
+  refresh or PWA re-open) returned the root index.html and the Today page
+  rendered under the Settings URL. The fallback now resolves
+  `<path>/index.html` before falling back to the shell.
+- Sidebar footer now shows the running version
+  ("Self-hosted · for the whole table · v0.4.5"), sourced from
+  `/api/health`.
+
 ## [0.4.4] — 2026-09-22
 
 ### Added

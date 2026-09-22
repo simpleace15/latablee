@@ -74,10 +74,16 @@ if STATIC_DIR is not None:
     def _root() -> RedirectResponse:
         return RedirectResponse(url="/static/index.html")
 
-    # SPA fallback: any non-API GET without a file → the SPA shell (client router takes over)
+    # SPA fallback: non-API GET without a file → the SPA shell (client router takes over).
+    # Next.js static export writes directory indexes (settings/index.html, trailingSlash mode),
+    # so resolve those too — otherwise /settings (no slash) serves the ROOT index.html and the
+    # user sees the Today page under the /settings URL.
     @app.get("/{full_path:path}", include_in_schema=False)
     def _spa_fallback(full_path: str) -> FileResponse:
         candidate = STATIC_DIR / full_path
         if full_path and candidate.is_file():
             return FileResponse(candidate)
+        index = candidate / "index.html" if full_path else None
+        if index is not None and index.is_file():
+            return FileResponse(index)
         return FileResponse(STATIC_DIR / "index.html")

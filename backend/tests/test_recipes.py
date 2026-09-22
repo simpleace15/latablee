@@ -76,7 +76,7 @@ def test_household_isolation(client, admin):
     resp = client.post("/api/v1/auth/invite", headers=admin)
     token = re.search(r"invite=([\w-]+)", resp.json()["invite_url"]).group(1)
     client.post("/api/v1/auth/register",
-                params={"name": "Other", "password": "longenough1", "invite_token": token})
+                json={"name": "Other", "password": "longenough1", "invite_token": token})
     resp = client.post("/api/v1/recipes", json={
         "title": "Secret Chili", "instructions": [], "ingredients": []}, headers=admin)
     rid = resp.json()["id"]

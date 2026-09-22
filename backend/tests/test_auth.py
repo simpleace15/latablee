@@ -1,6 +1,6 @@
 # Auth + onboarding integration tests
 def test_first_user_becomes_admin(client):
-    resp = client.post("/api/v1/auth/register", params={"name": "A", "password": "longenough1"})
+    resp = client.post("/api/v1/auth/register", json={"name": "A", "password": "longenough1"})
     assert resp.status_code == 201
     body = resp.json()
     assert body["user"]["role"] == "admin"
@@ -8,7 +8,7 @@ def test_first_user_becomes_admin(client):
 
 
 def test_second_user_requires_invite(client, admin):
-    resp = client.post("/api/v1/auth/register", params={"name": "B", "password": "longenough1"})
+    resp = client.post("/api/v1/auth/register", json={"name": "B", "password": "longenough1"})
     assert resp.status_code == 403
     resp = client.post("/api/v1/auth/invite", headers=admin)
     assert resp.status_code == 200
@@ -17,12 +17,12 @@ def test_second_user_requires_invite(client, admin):
     url = resp.json()["invite_url"]
     token = re.search(r"invite=([\w-]+)", url).group(1)
     resp = client.post("/api/v1/auth/register",
-                       params={"name": "Wife", "password": "longenough1", "invite_token": token})
+                       json={"name": "Wife", "password": "longenough1", "invite_token": token})
     assert resp.status_code == 201
     assert resp.json()["user"]["role"] == "user"
     # token single-use
     resp = client.post("/api/v1/auth/register",
-                       params={"name": "C", "password": "longenough1", "invite_token": token})
+                       json={"name": "C", "password": "longenough1", "invite_token": token})
     assert resp.status_code == 403
 
 
@@ -44,6 +44,6 @@ def test_onboarding_feeds_household_profile(client, admin):
 
 
 def test_onboard_requires_admin(client):
-    client.post("/api/v1/auth/register", params={"name": "A", "password": "longenough1"})
+    client.post("/api/v1/auth/register", json={"name": "A", "password": "longenough1"})
     resp = client.post("/api/v1/auth/invite")  # no token
     assert resp.status_code in (401, 403)

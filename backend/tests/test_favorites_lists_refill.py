@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 
 def _admin(client: TestClient):
-    r = client.post("/api/v1/auth/register", params={"name": "Chef", "password": "hunter2hunter"})
+    r = client.post("/api/v1/auth/register", json={"name": "Chef", "password": "hunter2hunter"})
     tok = r.json()["token"]
     client.post("/api/v1/household/onboard", json={
         "name": "Home", "timezone": "America/Denver", "dietary_preferences": {},

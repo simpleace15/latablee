@@ -5,6 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
 from app.core.config import get_settings
@@ -19,15 +20,20 @@ def _first_user_exists(session: Session) -> bool:
     return session.exec(select(User)).first() is not None
 
 
+class RegisterRequest(BaseModel):
+    """JSON body for /auth/register — bare scalar params would bind as query."""
+
+    name: str = Field(min_length=1, max_length=40)
+    password: str = Field(min_length=8)
+    invite_token: str | None = None
+
+
 @router.post("/register", status_code=201)
-def register(
-    name: str,
-    password: str,
-    invite_token: str | None = None,
-    session: Session = Depends(get_session),
-) -> dict:
+def register(payload: RegisterRequest, session: Session = Depends(get_session)) -> dict:
     """First ever user becomes admin; later users need a valid invite token."""
-    name = name.strip()
+    name = payload.name.strip()
+    password = payload.password
+    invite_token = payload.invite_token
     if len(password) < 8:
         raise HTTPException(422, "Password must be at least 8 characters")
     if not name:

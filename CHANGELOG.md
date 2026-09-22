@@ -3,6 +3,16 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.4.3] — 2026-09-22
+
+### Fixed
+- **First account creation was broken (HTTP 422).** `/auth/register` declared
+  `name`/`password`/`invite_token` as bare scalar params, which FastAPI binds
+  as *query* parameters — but the UI sends a JSON body. Every first registration
+  attempt failed validation. Now a `RegisterRequest` body model (same response
+  shape); invite-token flow fixed with it. 5 regression tests added.
+- No other endpoints had the mismatch (audited POST/PUT/PATCH handlers).
+
 ## [0.4.2] — 2026-09-22
 
 ### Changed

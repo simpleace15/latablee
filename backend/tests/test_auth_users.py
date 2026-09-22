@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 
 
 def _register(client: TestClient, name: str, password: str = "hunter2hunter"):
-    return client.post("/api/v1/auth/register", params={"name": name, "password": password})
+    return client.post("/api/v1/auth/register", json={"name": name, "password": password})
 
 
 def test_login_case_insensitive(client: TestClient):
@@ -31,7 +31,7 @@ def test_duplicate_case_insensitive(client: TestClient):
     assert onboard.status_code == 200, onboard.text
     inv = client.post("/api/v1/auth/invite", json={}, headers={"Authorization": f"Bearer {admin_tok}"}).json()
     r = client.post("/api/v1/auth/register",
-                    params={"name": "cAsEy", "password": "hunter2hunter", "invite_token": inv["invite_url"].split("invite=")[1]})
+                    json={"name": "cAsEy", "password": "hunter2hunter", "invite_token": inv["invite_url"].split("invite=")[1]})
     assert r.status_code == 409, r.text
     assert "taken" in r.json()["detail"]
 

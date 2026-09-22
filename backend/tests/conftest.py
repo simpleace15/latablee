@@ -29,7 +29,7 @@ def client(tmp_path, monkeypatch):
 @pytest.fixture()
 def admin(client):
     """Register first user (becomes admin) + onboard household; return auth headers."""
-    resp = client.post("/api/v1/auth/register", params={"name": "Admin", "password": "hunter2hunter"})
+    resp = client.post("/api/v1/auth/register", json={"name": "Admin", "password": "hunter2hunter"})
     assert resp.status_code == 201, resp.text
     token = resp.json()["token"]
     headers = {"Authorization": f"Bearer {token}"}

@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 
 def _admin(client: TestClient):
-    r = client.post("/api/v1/auth/register", params={"name": "Boss", "password": "hunter2hunter"})
+    r = client.post("/api/v1/auth/register", json={"name": "Boss", "password": "hunter2hunter"})
     tok = r.json()["token"]
     client.post("/api/v1/household/onboard", json={
         "name": "Home", "timezone": "America/Denver", "dietary_preferences": {},
@@ -118,7 +118,7 @@ def test_backup_restore_roundtrip(client: TestClient):
     inv_body = inv.json()
     inv_body = inv.json()
     token_part = inv_body.get("token") or inv_body["invite_url"].split("invite=")[1]
-    r2 = client.post("/api/v1/auth/register", params={
+    r2 = client.post("/api/v1/auth/register", json={
         "name": "Plain", "password": "hunter2hunter", "invite_token": token_part})
     user_hdrs = {"Authorization": f"Bearer {r2.json()['token']}"}
     assert client.post("/api/v1/export/restore", headers=user_hdrs,

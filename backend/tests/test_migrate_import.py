@@ -60,7 +60,7 @@ SCHEMA_RECIPE = {
 
 def _admin_headers(client: TestClient) -> dict:
     """Register first user (becomes admin) + onboard, mirroring conftest's admin fixture."""
-    resp = client.post("/api/v1/auth/register", params={"name": "Admin", "password": "hunter2hunter"})
+    resp = client.post("/api/v1/auth/register", json={"name": "Admin", "password": "hunter2hunter"})
     assert resp.status_code == 201, resp.text
     headers = {"Authorization": f"Bearer {resp.json()['token']}"}
     resp = client.post("/api/v1/household/onboard", json={

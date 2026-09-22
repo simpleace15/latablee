@@ -43,6 +43,12 @@ export default function SettingsPage() {
   const [llm, setLlm] = useState({ base_url: "", api_key: "", model: "", vision_model: "" });
   const [llmKeySet, setLlmKeySet] = useState(false);
   const [llmSaved, setLlmSaved] = useState(false);
+  // admin diagnostics
+  const [llmTest, setLlmTest] = useState<{ ok: boolean; seconds?: number; reply?: string; error?: string } | null>(null);
+  const [llmTestBusy, setLlmTestBusy] = useState(false);
+  const [llmLog, setLlmLog] = useState<Awaited<ReturnType<typeof api.adminLlmLog>>["entries"]>([]);
+  const [showLog, setShowLog] = useState(false);
+  const [llmTimeout, setLlmTimeout] = useState<string>("");
 
   useEffect(() => {
     setThemeState(window.localStorage.getItem("latablee_theme") ?? "");
@@ -59,6 +65,12 @@ export default function SettingsPage() {
         if (u.role === "admin") {
           try {
             const s = await api.llmSettings();
+            try {
+              const t = await api.adminLlmGetTimeout();
+              setLlmTimeout(t.timeout_seconds != null ? String(t.timeout_seconds) : "");
+              const lg = await api.adminLlmLog();
+              setLlmLog(lg.entries);
+            } catch { /* non-admin or older backend */ }
             setLlm((prev) => ({ ...prev, base_url: s.base_url, model: s.model, vision_model: s.vision_model }));
             setLlmKeySet(s.api_key_set);
           } catch {
@@ -209,6 +221,32 @@ export default function SettingsPage() {
       setTimeout(() => setLlmSaved(false), 2500);
     } catch {
       /* surfaced by button state */
+    }
+  }
+
+  async function runLlmTest() {
+    setLlmTestBusy(true);
+    setLlmTest(null);
+    try {
+      setLlmTest(await api.adminLlmTest());
+      const lg = await api.adminLlmLog();
+      setLlmLog(lg.entries);
+    } catch (err) {
+      setLlmTest({ ok: false, error: err instanceof Error ? err.message : "Test failed" });
+    } finally {
+      setLlmTestBusy(false);
+    }
+  }
+
+  async function saveLlmTimeout() {
+    const n = Number(llmTimeout);
+    if (!Number.isFinite(n) || n < 5) return;
+    try {
+      await api.adminLlmSetTimeout(n);
+      const lg = await api.adminLlmLog();
+      setLlmLog(lg.entries);
+    } catch {
+      /* keep prior state */
     }
   }
 
@@ -368,7 +406,59 @@ export default function SettingsPage() {
               value={llm.api_key} onChange={(e) => setLlm({ ...llm, api_key: e.target.value })} />
             <Input label="Model" value={llm.model} onChange={(e) => setLlm({ ...llm, model: e.target.value })} />
             <Input label="Vision model (for photo import)" value={llm.vision_model} onChange={(e) => setLlm({ ...llm, vision_model: e.target.value })} />
-            <Button onClick={saveLLM}>{llmSaved ? "Saved ✓" : "Save AI settings"}</Button>
+            <Input
+              label="AI timeout — seconds (default 120; raise it if your model is slow or cold-loading)"
+              value={llmTimeout}
+              onChange={(e) => setLlmTimeout(e.target.value)}
+              placeholder="120"
+              inputMode="numeric"
+            />
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={saveLLM}>{llmSaved ? "Saved ✓" : "Save AI settings"}</Button>
+              <Button className="flex-1" variant="accent" onClick={saveLlmTimeout} disabled={!llmTimeout}>Save timeout</Button>
+            </div>
+            <Button variant="ghost" onClick={runLlmTest} disabled={llmTestBusy}>
+              {llmTestBusy ? "Testing…" : "Test connection"}
+            </Button>
+            {llmTest && (
+              <p className="text-sm" style={{ color: llmTest.ok ? "var(--color-success, #4caf7d)" : "var(--color-danger, #d65a4a)" }}>
+                {llmTest.ok
+                  ? `✓ AI answered in ${llmTest.seconds}s — "${llmTest.reply}"`
+                  : `✗ ${llmTest.error}`}
+              </p>
+            )}
+
+            <div className="border-t pt-3" style={{ borderColor: "var(--color-border)" }}>
+              <button className="text-sm underline" style={{ color: "var(--color-muted-foreground)" }}
+                onClick={() => setShowLog(!showLog)}>
+                {showLog ? "Hide" : "Show"} recent AI activity ({llmLog.length})
+              </button>
+              {showLog && (
+                <div className="mt-3 max-h-72 overflow-y-auto rounded-[var(--radius-card)] border p-3" style={{ borderColor: "var(--color-border)" }}>
+                  {llmLog.length === 0 ? (
+                    <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+                      No AI calls yet — photo import, refill-my-week, and voice all show up here.
+                    </p>
+                  ) : (
+                    <ul className="space-y-2 text-sm">
+                      {llmLog.map((e, i) => (
+                        <li key={i} className="flex flex-wrap items-baseline gap-x-2">
+                          <span style={{ color: e.status === "ok" ? "var(--color-success, #4caf7d)" : "var(--color-danger, #d65a4a)" }}>
+                            {e.status === "ok" ? "✓" : "✗"}
+                          </span>
+                          <span className="font-mono text-xs" style={{ color: "var(--color-muted-foreground)" }}>{e.at}</span>
+                          <span>{e.kind}{e.image ? " +photo" : ""} · {e.model}</span>
+                          {e.seconds != null && <span style={{ color: "var(--color-muted-foreground)" }}>{e.seconds}s</span>}
+                          {e.prompt_chars != null && <span style={{ color: "var(--color-muted-foreground)" }}>{e.prompt_chars} chars</span>}
+                          {e.error && <span style={{ color: "var(--color-danger, #d65a4a)" }}>{e.error}</span>}
+                          {e.note && <span style={{ color: "var(--color-muted-foreground)" }}>{e.note}</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </Card>
       )}

@@ -36,6 +36,67 @@ export default function NewRecipePage() {
   const [aiPrompt, setAiPrompt] = useState("");
   const [parsed, setParsed] = useState<Partial<Recipe> | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // multi-URL queue: paste N links -> fetch all -> review one at a time
+  type QueueItem = { url: string; ok: boolean; parsed?: Partial<Recipe>; error?: string };
+  const [queueText, setQueueText] = useState("");
+  const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [queueIdx, setQueueIdx] = useState(0);
+  const [queueBusy, setQueueBusy] = useState(false);
+  const [queueDone, setQueueDone] = useState(false);
+  const queueCurrent = queue[queueIdx];
+  const queueRemaining = queue.length - queueIdx;
+
+  async function importQueue() {
+    setQueueBusy(true);
+    setError("");
+    try {
+      const res = await api.importFromUrls(queueText);
+      setQueue(res.results);
+      setQueueIdx(0);
+      setQueueDone(false);
+      const first = res.results[0];
+      setParsed(first?.ok ? { ...emptyRecipe(), ...first.parsed } : null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't fetch those links");
+    } finally {
+      setQueueBusy(false);
+    }
+  }
+
+  function queueAdvance(nextIdx: number, loadFirst = false) {
+    setQueueIdx(nextIdx);
+    if (nextIdx >= queue.length) {
+      setQueueDone(true);
+      setParsed(null);
+      return;
+    }
+    const next = queue[nextIdx];
+    if (loadFirst || next?.ok) {
+      setParsed(next.ok ? { ...emptyRecipe(), ...next.parsed } : null);
+    }
+  }
+
+  function queueSave() {
+    // save current then auto-advance to next item
+    (async () => {
+      setBusy(true);
+      try {
+        const r = parsed as Recipe;
+        if (!r.title?.trim()) throw new Error("Give it a title");
+        await api.createRecipe(r);
+        queueAdvance(queueIdx + 1);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Couldn't save");
+      } finally {
+        setBusy(false);
+      }
+    })();
+  }
+
+  function queueSkip() {
+    queueAdvance(queueIdx + 1);
+  }
   const [error, setError] = useState("");
 
   async function importUrl() {
@@ -258,6 +319,68 @@ export default function NewRecipePage() {
           <p className="mt-3 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
             Works with most recipe sites. You'll review before it's saved.
           </p>
+
+          <div className="my-5 border-t" style={{ borderColor: "var(--color-border)" }} />
+
+          <label className="text-sm font-medium">Import a batch of links</label>
+          <textarea
+            className="mt-2 w-full rounded-[var(--radius-card)] border p-3 text-sm"
+            style={{ borderColor: "var(--color-border)", background: "var(--color-background)", color: "var(--color-foreground)", minHeight: "5.5rem" }}
+            placeholder={"Paste as many recipe links as you like — anything else in the text is ignored.\nhttps://…\nhttps://…"}
+            value={queueText}
+            onChange={(e) => setQueueText(e.target.value)}
+          />
+          <Button className="mt-3 w-full" onClick={importQueue} disabled={queueBusy || !queueText.trim()}>
+            {queueBusy ? "Fetching all…" : "Fetch all & review"}
+          </Button>
+          <p className="mt-3 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+            Each link is fetched one at a time and queued for review — nothing is saved until you approve it.
+          </p>
+
+          {queue.length > 0 && !queueDone && (
+            <div className="mt-5 rounded-[var(--radius-card)] border p-4" style={{ borderColor: "var(--color-border)" }}>
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium">
+                  Reviewing {queueIdx + 1} of {queue.length}
+                </span>
+                <span style={{ color: "var(--color-muted-foreground)" }}>
+                  {queue.filter((q) => q.ok).length} parsed · {queue.filter((q) => !q.ok).length} failed
+                </span>
+              </div>
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full" style={{ background: "var(--color-border)" }}>
+                <div className="h-full rounded-full transition-all" style={{ width: `${((queueIdx) / queue.length) * 100}%`, background: "var(--color-primary, #e0592a)" }} />
+              </div>
+              {queueCurrent && (
+                <p className="mt-3 truncate text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+                  {queueCurrent.ok ? "✓" : "✗"} {queueCurrent.url}
+                  {queueCurrent.error ? ` — ${queueCurrent.error}` : ""}
+                </p>
+              )}
+              <div className="mt-4 flex gap-2">
+                <Button className="flex-1" size="lg" onClick={queueSave} disabled={!queueCurrent?.ok || busy}>
+                  {busy ? "Saving…" : "Save & next"}
+                </Button>
+                <Button className="flex-1" size="lg" variant="ghost" onClick={queueSkip}>
+                  Skip
+                </Button>
+              </div>
+            </div>
+          )}
+          {queueDone && (
+            <div className="mt-5 rounded-[var(--radius-card)] border p-4" style={{ borderColor: "var(--color-border)" }}>
+              <p className="text-sm font-medium">Queue done — {queue.filter((q) => q.ok).length} of {queue.length} imported.</p>
+              {queue.some((q) => !q.ok) && (
+                <ul className="mt-2 space-y-1 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+                  {queue.filter((q) => !q.ok).map((q) => (
+                    <li key={q.url} className="truncate">✗ {q.url} — {q.error}</li>
+                  ))}
+                </ul>
+              )}
+              <Button className="mt-3" variant="ghost" onClick={() => { setQueue([]); setQueueIdx(0); setQueueDone(false); setQueueText(""); }}>
+                Start another batch
+              </Button>
+            </div>
+          )}
         </Card>
       ) : tab === "photo" ? (
         <Card className="p-5">

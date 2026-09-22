@@ -253,6 +253,31 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ url }),
     }),
+  // admin llm diagnostics
+  adminLlmTest: () =>
+    request<{ ok: boolean; seconds?: number; model?: string; reply?: string; error?: string }>(
+      "/admin/llm/test", { method: "POST" }),
+  adminLlmLog: () =>
+    request<{ entries: { at: string; kind: string; status: string; seconds?: number;
+      model?: string; error?: string; prompt_chars?: number; image?: boolean; note?: string }[] }>(
+      "/admin/llm/log"),
+  adminLlmGetTimeout: () =>
+    request<{ timeout_seconds: number | null }>("/admin/llm/timeout"),
+  adminLlmSetTimeout: (timeout_seconds: number) =>
+    request<{ timeout_seconds: number }>("/admin/llm/timeout", {
+      method: "POST",
+      body: JSON.stringify({ timeout_seconds }),
+    }),
+  importFromUrls: (urls: string) =>
+    request<{
+      results: { url: string; ok: boolean; parsed?: Partial<Recipe>; error?: string }[];
+      total: number;
+      ok_count: number;
+      note: string;
+    }>("/import/urls", {
+      method: "POST",
+      body: JSON.stringify({ urls }),
+    }),
   importFromPhoto: (file: File) => {
     const form = new FormData();
     form.append("file", file);

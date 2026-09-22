@@ -3,6 +3,27 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.4.4] — 2026-09-22
+
+### Added
+- **Multi-URL batch import.** Paste a pile of links into Import → URL; links
+  are regex-extracted from surrounding text, deduped (max 20), and fetched
+  one at a time. Review queue: Save & next / Skip per recipe, progress bar,
+  failed-URL summary at the end. One bad link never kills the batch.
+- **Admin AI diagnostics** (Settings → AI endpoint): "Test connection" with
+  measured latency, recent AI-activity log (last 50 calls: kind, duration,
+  errors), and an adjustable **AI timeout** setting.
+
+### Fixed
+- **"AI endpoint failed: timed out"** — the old hard-coded 60s single-float
+  timeout starved local models (Ollama cold-starts and long photo-import
+  reads). Timeout is now connect=10s / read=configurable (default 120s,
+  Settings or `LATABLEE_LLM_TIMEOUT_SECONDS` env), with a clear error
+  message telling you where to raise it.
+- JSON-mode calls no longer hard-fail on local servers that ignore
+  `response_format` (llama.cpp, older Ollama) — they retry with a
+  plain-prompt instruction and extract the JSON from the reply.
+
 ## [0.4.3] — 2026-09-22
 
 ### Fixed

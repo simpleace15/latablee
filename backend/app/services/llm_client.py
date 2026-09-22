@@ -1,6 +1,7 @@
 # OpenAI-compatible LLM client. Reads env first, then DB Setting rows (admin-editable).
 import json
 import logging
+import time
 from typing import Any
 
 import httpx
@@ -11,6 +12,23 @@ from app.db.engine import get_engine
 from app.models import Setting
 
 logger = logging.getLogger(__name__)
+
+# Diagnostics ring buffer: last N LLM calls (success + failure) for the admin UI.
+# Not a substitute for real logging — a lightweight "what did the AI actually do" view.
+LLM_LOG_MAX = 50
+_llm_log: list[dict[str, Any]] = []
+
+
+def _log_call(entry: dict[str, Any]) -> None:
+    from datetime import UTC, datetime
+    entry["at"] = datetime.now(UTC).isoformat(timespec="seconds")
+    _llm_log.append(entry)
+    del _llm_log[:-LLM_LOG_MAX]
+
+
+def get_llm_log() -> list[dict[str, Any]]:
+    """Most recent first."""
+    return list(reversed(_llm_log))
 
 
 def _db_settings() -> dict[str, Any]:
@@ -53,12 +71,47 @@ def save_llm_settings(base_url: str, api_key: str, model: str, vision_model: str
         session.commit()
 
 
+def _llm_timeout() -> httpx.Timeout:
+    """Connect 10s, read configurable (default 120s). Local models cold-start slowly:
+    a single float timeout makes Ollama loading a big model look like a timeout."""
+    db = _db_settings()
+    read = float(db.get("timeout_seconds") or get_settings().llm_timeout_seconds or 120)
+    return httpx.Timeout(connect=10.0, read=read, write=30.0, pool=10.0)
+
+
+def test_llm_connection() -> dict[str, Any]:
+    """Admin diagnostics: ping /models + a 1-token chat, measure latency."""
+    s = get_llm_settings()
+    if not s["base_url"]:
+        return {"ok": False, "error": "No AI endpoint configured"}
+    url = s["base_url"].rstrip("/") + "/chat/completions"
+    headers = {"Authorization": f"Bearer {s['api_key']}"} if s["api_key"] else {}
+    body = {"model": s["model"], "messages": [{"role": "user", "content": "Reply with the word: ok"}],
+            "max_tokens": 5, "temperature": 0}
+    t0 = time.monotonic()
+    try:
+        with httpx.Client(timeout=_llm_timeout()) as client:
+            resp = client.post(url, json=body, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+        dt = round(time.monotonic() - t0, 2)
+        text = (data["choices"][0]["message"]["content"] or "")[:80]
+        _log_call({"kind": "test", "model": s["model"], "status": "ok", "seconds": dt})
+        return {"ok": True, "seconds": dt, "model": s["model"], "reply": text}
+    except Exception as exc:
+        dt = round(time.monotonic() - t0, 2)
+        msg = f"{type(exc).__name__}: {exc}"[:300]
+        _log_call({"kind": "test", "model": s["model"], "status": "error", "seconds": dt, "error": msg})
+        return {"ok": False, "seconds": dt, "model": s["model"], "error": msg}
+
+
 def chat(prompt: str, json_mode: bool = False, image_b64: str | None = None) -> str:
     """One-shot chat completion. Raises on failure so callers can 502 gracefully."""
     s = get_llm_settings()
     if not s["base_url"]:
         raise RuntimeError("LLM not configured")
     url = s["base_url"].rstrip("/") + "/chat/completions"
+    t0 = time.monotonic()
     content: Any = prompt
     if image_b64:
         content = [
@@ -70,18 +123,50 @@ def chat(prompt: str, json_mode: bool = False, image_b64: str | None = None) -> 
         "messages": [{"role": "user", "content": content}],
         "temperature": 0.4,
     }
-    if json_mode:
+    want_json = json_mode
+    if want_json:
         body["response_format"] = {"type": "json_object"}
     headers = {}
     if s["api_key"]:
         headers["Authorization"] = f"Bearer {s['api_key']}"
-    with httpx.Client(timeout=60) as client:
-        resp = client.post(url, json=body, headers=headers)
-        resp.raise_for_status()
-        data = resp.json()
+    try:
+        with httpx.Client(timeout=_llm_timeout()) as client:
+            resp = client.post(url, json=body, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+        dt = round(time.monotonic() - t0, 2)
+        _log_call({"kind": "chat", "model": body["model"], "status": "ok",
+                   "seconds": dt, "prompt_chars": len(prompt), "image": bool(image_b64)})
+    except httpx.ReadTimeout as exc:
+        dt = round(time.monotonic() - t0, 2)
+        msg = f"Timed out after {dt}s — raise the AI timeout in Settings if your model is slow or cold-loading"
+        _log_call({"kind": "chat", "model": body["model"], "status": "error",
+                   "seconds": dt, "error": msg, "prompt_chars": len(prompt), "image": bool(image_b64)})
+        raise RuntimeError(msg) from exc
+    except Exception as exc:
+        dt = round(time.monotonic() - t0, 2)
+        msg = f"{type(exc).__name__}: {exc}"[:300]
+        _log_call({"kind": "chat", "model": body["model"], "status": "error",
+                   "seconds": dt, "error": msg, "prompt_chars": len(prompt), "image": bool(image_b64)})
+        raise RuntimeError(msg) from exc
     text = data["choices"][0]["message"]["content"]
-    if json_mode:
-        return _extract_json(text)
+    if want_json:
+        # Many local servers (llama.cpp, older Ollama) ignore response_format — fall back to
+        # plain prompt + extraction instead of failing.
+        try:
+            return _extract_json(text)
+        except Exception:
+            retry_prompt = prompt + "\n\nRespond with ONLY a JSON object."
+            body2 = dict(body)
+            body2["messages"] = [{"role": "user", "content": retry_prompt}]
+            body2.pop("response_format", None)
+            with httpx.Client(timeout=_llm_timeout()) as client:
+                resp = client.post(url, json=body2, headers=headers)
+                resp.raise_for_status()
+                data = resp.json()
+            _log_call({"kind": "chat", "model": body["model"], "status": "ok",
+                       "seconds": round(time.monotonic() - t0, 2), "note": "json retry (no response_format)"})
+            return _extract_json(data["choices"][0]["message"]["content"])
     return text
 
 

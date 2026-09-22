@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "LaTablée"
-    version: str = "0.4.3"
+    version: str = "0.4.4"
     api_v1_prefix: str = "/api/v1"
     debug: bool = False
 
@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     llm_model: str = "gpt-4o-mini"
     llm_vision_model: str = ""  # falls back to llm_model
+    llm_timeout_seconds: float = 120  # read timeout for AI calls (local models cold-load slowly)
 
     # Frontend origin (for invite links)
     public_origin: str = "http://localhost:3000"

@@ -33,6 +33,43 @@ def import_url(
     return {"parsed": parsed, "saved": False, "note": "Review and save via POST /recipes"}
 
 
+class UrlsIn(BaseModel):
+    urls: str  # free text — links pasted from anywhere; we regex-extract them
+
+    @property
+    def url_list(self) -> list[str]:
+        import re
+        # http(s) only; dedupe preserving order; cap 20 per batch (server time + politeness)
+        found = re.findall(r'''https?://[^\s<>"')\]]+''', self.urls)
+        seen: dict[str, None] = {}
+        for u in found:
+            seen.setdefault(u.rstrip(".,;:!?"), None)
+        return list(seen)[:20]
+
+
+@router.post("/urls", status_code=200)
+def import_urls(
+    payload: UrlsIn,
+    user: Annotated[User, Depends(require_household)],
+    session: Annotated[Session, Depends(get_session)],
+) -> dict:
+    """Scrape many recipe URLs in one call — per-URL results; one failure
+    doesn't kill the batch. Sequential on purpose: polite to origin sites.
+    Parsed results are drafts for review — NOT auto-saved."""
+    urls = payload.url_list
+    if not urls:
+        raise HTTPException(422, "No http(s) URLs found in that text")
+    results = []
+    for u in urls:
+        try:
+            results.append({"url": u, "ok": True, "parsed": import_from_url(u)})
+        except Exception as exc:
+            results.append({"url": u, "ok": False, "error": f"{type(exc).__name__}: {exc}"[:300]})
+    ok_n = sum(1 for r in results if r["ok"])
+    return {"results": results, "total": len(results), "ok_count": ok_n,
+            "note": "Review and save via POST /recipes"}
+
+
 @router.post("/photo", status_code=200)
 async def import_photo(
     user: Annotated[User, Depends(require_household)],

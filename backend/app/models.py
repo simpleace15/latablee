@@ -31,6 +31,9 @@ class Household(TimestampMixin, SQLModel, table=True):
     allergies: list[str] | None = Field(default=None, sa_column=Column(JSON))
     dislikes: list[str] | None = Field(default=None, sa_column=Column(JSON))
     favorites: list[str] | None = Field(default=None, sa_column=Column(JSON))
+    # Free-text planning rules fed to the AI planner, e.g. "only 1 chicken meal a week",
+    # "don't repeat any meals from the last 2 weeks" — variety knobs (0.5.1).
+    planning_rules: list[str] | None = Field(default=None, sa_column=Column(JSON))
     things_to_remember: str = ""
     onboarded_at: datetime | None = None
 

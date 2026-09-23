@@ -3,11 +3,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
+from sqlalchemy import delete
 from sqlmodel import Session, select
 
 from app.core.security import require_household
 from app.db.engine import get_session
-from app.models import Ingredient, Recipe, User
+from app.models import Ingredient, MealPlanEntry, Recipe, User
 from app.services.recipe_search import index_search_text
 from app.services.unit_conversion import normalize_ingredient_units
 
@@ -166,6 +167,8 @@ def delete_recipe(
     session: Annotated[Session, Depends(get_session)],
 ) -> None:
     r = get_recipe_or_404(recipe_id, session, user)
+    # SQLite FKs have no ON DELETE CASCADE here — clear dependents first or the DELETE 500s.
+    session.exec(delete(MealPlanEntry).where(MealPlanEntry.recipe_id == recipe_id))  # type: ignore[attr-defined]
     session.delete(r)
     session.commit()
 

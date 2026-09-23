@@ -3,6 +3,23 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.5.1] — 2026-09-23
+
+### Added
+- **Planning rules** in Settings → Food preferences: free-text instructions the
+  meal planner follows, one per line — "only 1 chicken meal per week",
+  "don't repeat any meals from the last 2 weeks", "meatless on Wednesdays".
+  Fed to the AI on every Refill/Regenerate alongside your profile.
+- **Anti-repeat context**: the planner now sees what was planned in the
+  two weeks before the target week, so "don't repeat" actually has the
+  data to work with.
+
+### Fixed
+- Meal chips on the Plan page are now links — tap a planned meal to open
+  its recipe (the delete button still works as before).
+- Deleting a recipe that's on the plan no longer errors: its plan entries
+  are cleared with it (root fix for the FK constraint crash).
+
 ## [0.5.0] — 2026-09-22
 
 ### Added

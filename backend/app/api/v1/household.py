@@ -19,6 +19,7 @@ class HouseholdIn(BaseModel):
     allergies: list[str] | None = None
     dislikes: list[str] | None = None
     favorites: list[str] | None = None
+    planning_rules: list[str] | None = None
     things_to_remember: str = ""
 
 
@@ -81,6 +82,7 @@ def update_household(
     h.allergies = payload.allergies if payload.allergies is not None else h.allergies
     h.dislikes = payload.dislikes if payload.dislikes is not None else h.dislikes
     h.favorites = payload.favorites if payload.favorites is not None else h.favorites
+    h.planning_rules = payload.planning_rules if payload.planning_rules is not None else h.planning_rules
     h.things_to_remember = payload.things_to_remember if payload.things_to_remember is not None else h.things_to_remember
     session.add(h)
     session.commit()

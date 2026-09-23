@@ -89,6 +89,7 @@ export interface Household {
   allergies: string[] | null;
   dislikes: string[] | null;
   favorites: string[] | null;
+  planning_rules: string[] | null;
   things_to_remember: string;
 }
 

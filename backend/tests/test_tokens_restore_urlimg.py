@@ -60,8 +60,10 @@ def test_backup_restore_roundtrip(client: TestClient):
     client.put(f"/api/v1/recipes/{rec['id']}/favorite?favorite=true", headers=hdrs)
     client.post(f"/api/v1/recipes/{rec['id']}/image", headers=hdrs,
                 files={"file": ("x.png", io.BytesIO(PNG_1PX), "image/png")})
+    # seed relative to the household's actual today — hardcoded dates rollover at midnight
+    today = client.get("/api/v1/plan?days=1", headers=hdrs).json()["start"]
     client.post("/api/v1/plan", headers=hdrs, json={
-        "date": "2026-09-22", "slot": "dinner", "recipe_id": rec["id"]})
+        "date": today, "slot": "dinner", "recipe_id": rec["id"]})
     lst = client.post("/api/v1/lists", headers=hdrs, json={"name": "Backup test"}).json()
     client.post(f"/api/v1/lists/{lst['id']}/add-recipe/{rec['id']}", headers=hdrs)
 

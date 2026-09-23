@@ -190,7 +190,23 @@ def refill_week(
                 "message": "Week is already full" if not replace else "Cleared, but nothing was planned"}
 
     recipes = list(session.exec(select(Recipe).where(Recipe.household_id == user.household_id)))
-    prompt = _refill_prompt(h, recipes, empty)
+    # Anti-repeat context: titles planned in the two weeks before the target window.
+    recent_cutoff = start - timedelta(days=14)
+    recent = session.exec(
+        select(MealPlanEntry).where(
+            MealPlanEntry.household_id == user.household_id,
+            MealPlanEntry.planned_date >= recent_cutoff,
+            MealPlanEntry.planned_date < start,
+        )
+    ).all()
+    recent_recipe_ids = {e.recipe_id for e in recent if e.recipe_id}
+    recent_titles = []
+    if recent_recipe_ids:
+        titles = session.exec(
+            select(Recipe.title).where(Recipe.id.in_(recent_recipe_ids))  # type: ignore[attr-defined]
+        ).all()
+        recent_titles = sorted({t for t in titles if t})
+    prompt = _refill_prompt(h, recipes, empty, recent_titles=recent_titles)
     try:
         text = llm_client.chat(prompt, json_mode=True)
     except Exception as exc:
@@ -266,13 +282,19 @@ def save_proposal(
     return {**_recipe_out(r), "planned": planned}
 
 
-def _refill_prompt(h: Household | None, recipes: list[Recipe], empty: list[tuple[str, str]]) -> str:
+def _refill_prompt(
+    h: Household | None,
+    recipes: list[Recipe],
+    empty: list[tuple[str, str]],
+    recent_titles: list[str] | None = None,
+) -> str:
     profile = {
         "dietary_preferences": h.dietary_preferences if h else {},
         "allergies": h.allergies if h else [],
         "dislikes": h.dislikes if h else [],
         "favorites": [f for f in (h.favorites if h else [])],
         "things_to_remember": h.things_to_remember if h else "",
+        "planning_rules": (h.planning_rules or []) if h else [],
     }
     fav_ids = {r.id for r in recipes if r.is_favorite}
     book = [
@@ -291,6 +313,8 @@ def _refill_prompt(h: Household | None, recipes: list[Recipe], empty: list[tuple
         '"ingredients":[{"name":string,"quantity":number,"unit":string}],'
         '"instructions":[string]}]}. '
         f"Empty slots: {empty}. Household profile: {profile}. Their recipe book: {book}"
+        + (f" Meals planned in the recent past (avoid repeating these unless the planning "
+           f"rules allow it): {recent_titles}." if recent_titles else "")
     )
 
 

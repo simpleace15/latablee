@@ -5,6 +5,7 @@ import { api, type PlanEntry, type Recipe } from "@/lib/api";
 import { Button, Card, Chip, EmptyState, Input, Spinner } from "@/components/ui";
 import AppLayout from "../AppLayout";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import Link from "next/link";
 import { CalendarDays, Plus, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 
 interface Proposal {
@@ -265,11 +266,19 @@ export default function PlanPage() {
               )}
               {dayEntries.map((e) => (
                 <div key={e.id} className="flex items-center justify-between gap-3 rounded-[12px] px-3 py-2" style={{ background: "var(--color-muted)" }}>
-                  <p className="truncate text-base">
-                    <span className="font-semibold capitalize">{e.slot}</span>
-                    {" · "}
-                    {e.title_override || e.recipe_title || "Planned"}
-                  </p>
+                  {e.recipe_id ? (
+                    <Link href={`/recipes/view/?id=${e.recipe_id}`} className="pressable truncate text-base" aria-label={`Open recipe ${e.title_override || e.recipe_title}`}>
+                      <span className="font-semibold capitalize">{e.slot}</span>
+                      {" · "}
+                      {e.title_override || e.recipe_title || "Planned"}
+                    </Link>
+                  ) : (
+                    <p className="truncate text-base">
+                      <span className="font-semibold capitalize">{e.slot}</span>
+                      {" · "}
+                      {e.title_override || e.recipe_title || "Planned"}
+                    </p>
+                  )}
                   <button
                     className="pressable rounded-full p-2"
                     style={{ color: "var(--color-muted-foreground)" }}

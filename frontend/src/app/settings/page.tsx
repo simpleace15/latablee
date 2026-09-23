@@ -31,6 +31,7 @@ export default function SettingsPage() {
 
   // llm settings
   const [prefsDraft, setPrefsDraft] = useState<{ allergies: string; dislikes: string }>({ allergies: "", dislikes: "" });
+  const [rulesDraft, setRulesDraft] = useState("");
   const [tokens, setTokens] = useState<{ id: number; name: string; created_at: string; last_used_at: string | null; revoked: boolean }[]>([]);
   const [newTokenName, setNewTokenName] = useState("");
   const [newTokenRaw, setNewTokenRaw] = useState("");
@@ -61,6 +62,7 @@ export default function SettingsPage() {
         allergies: (h.allergies ?? []).join(", "),
         dislikes: (h.dislikes ?? []).join(", "),
       });
+      setRulesDraft((h.planning_rules ?? []).join("\n"));
       api.tokens().then((res) => setTokens(res.tokens)).catch(() => {});
         if (u.role === "admin") {
           try {
@@ -130,6 +132,7 @@ export default function SettingsPage() {
         name: household?.name ?? "",
         allergies: parse(prefsDraft.allergies),
         dislikes: parse(prefsDraft.dislikes),
+        planning_rules: rulesDraft.split("\n").map((x) => x.trim()).filter(Boolean),
       });
       setPrefsSaved(true);
       setTimeout(() => setPrefsSaved(false), 2000);
@@ -486,6 +489,17 @@ export default function SettingsPage() {
             placeholder="mushrooms, olives"
           />
         </div>
+        <p className="mt-4 mb-3 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+          Planning rules — free-text instructions the meal planner follows. One per line.
+        </p>
+        <textarea
+          className="w-full rounded-[12px] px-3 py-2 text-base min-h-[88px]"
+          style={{ background: "var(--color-muted)", color: "var(--color-foreground)", border: "1px solid var(--color-border)" }}
+          value={rulesDraft}
+          onChange={(e) => setRulesDraft(e.target.value)}
+          placeholder={"Only 1 chicken meal per week\nDon\u0027t repeat any meals from the last 2 weeks\nMeatless on Wednesdays"}
+          aria-label="Planning rules for the meal planner"
+        />
         <div className="mt-3">
           <Button onClick={() => void savePrefs()}>{prefsSaved ? "Saved ✓" : "Save preferences"}</Button>
         </div>

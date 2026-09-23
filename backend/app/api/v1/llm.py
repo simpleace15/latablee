@@ -136,13 +136,19 @@ class RefillProposal(BaseModel):
 def refill_week(
     user: Annotated[User, Depends(require_household)],
     session: Annotated[Session, Depends(get_session)],
-    payload: dict | None = None,  # {slots: ["dinner"], days: 7, include_new: bool}
+    payload: dict | None = None,
 ) -> dict:
-    """Auto-plan the empty slots: pick from the household's recipe book where it fits,
-    propose brand-new dishes (respecting allergies/dislikes, biasing favorites) for
-    review — nothing new is saved without an explicit 'Save to book'."""
+    """Auto-plan the empty slots of a week: pick from the household's recipe book where it
+    fits, propose brand-new dishes (respecting allergies/dislikes, biasing favorites) for
+    review — nothing new is saved without an explicit 'Save to book'.
+
+    Payload: {start_date?: "YYYY-MM-DD" (defaults to today), days?: 7 (max 14),
+              slots?: ["dinner"], replace?: false}. replace=true CLEARS the targeted
+              slots in the window first (regenerate current/future weeks) and reports
+              what it removed.
+    """
     import json as _json
-    from datetime import timedelta
+    from datetime import date, timedelta
 
     from app.services.dates import household_today
 
@@ -150,18 +156,38 @@ def refill_week(
         raise HTTPException(409, "No AI endpoint configured — set it in Settings")
     h = session.get(Household, user.household_id)
     today = household_today(session, user.household_id)
-    days = int((payload or {}).get("days", 7))
-    slots = (payload or {}).get("slots") or ["dinner"]
-    window = [today + timedelta(days=i) for i in range(max(1, min(days, 14)))]
+    p = payload or {}
+    days = int(p.get("days", 7))
+    slots = p.get("slots") or ["dinner"]
+    start_raw = p.get("start_date")
+    try:
+        start = date.fromisoformat(start_raw) if start_raw else today
+    except ValueError as exc:
+        raise HTTPException(422, "start_date must be YYYY-MM-DD") from exc
+    window = [start + timedelta(days=i) for i in range(max(1, min(days, 14)))]
 
     entries = session.exec(select(MealPlanEntry).where(
         MealPlanEntry.household_id == user.household_id,
-        MealPlanEntry.planned_date >= today,
+        MealPlanEntry.planned_date >= start,
+        MealPlanEntry.planned_date < window[-1] + timedelta(days=1),
     )).all()
+    entries = [e for e in entries if e.slot in slots]
     taken = {(e.planned_date.isoformat(), e.slot) for e in entries}
+    cleared: list[dict] = []
+    replace = bool(p.get("replace"))
+    if replace and entries:
+        for e in entries:
+            cleared.append({"date": e.planned_date.isoformat(), "slot": e.slot,
+                            "title": e.title_override or None,
+                            "recipe_id": e.recipe_id})
+            session.delete(e)
+        session.flush()
+        taken = set()
     empty = [(d.isoformat(), slot) for d in window for slot in slots if (d.isoformat(), slot) not in taken]
     if not empty:
-        return {"filled": [], "proposals": [], "message": "Week is already full"}
+        session.commit()  # nothing to fill; commit any replace-clearing anyway
+        return {"filled": [], "proposals": [], "cleared": cleared,
+                "message": "Week is already full" if not replace else "Cleared, but nothing was planned"}
 
     recipes = list(session.exec(select(Recipe).where(Recipe.household_id == user.household_id)))
     prompt = _refill_prompt(h, recipes, empty)
@@ -195,8 +221,8 @@ def refill_week(
                               "title": title, "why": pick.get("why", ""),
                               "recipe": pick.get("recipe")})
     session.commit()
-    record_event(session, "meal_plan_updated", {"refilled": len(filled)})
-    return {"filled": filled, "proposals": proposals}
+    record_event(session, "meal_plan_updated", {"refilled": len(filled), "cleared": len(cleared)})
+    return {"filled": filled, "proposals": proposals, "cleared": cleared}
 
 
 @router.post("/save-proposal")

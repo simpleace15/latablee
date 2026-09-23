@@ -3,6 +3,19 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.5.0] — 2026-09-22
+
+### Added
+- **Refill any week, not just the current one.** "Refill week" now targets
+  the week you're *viewing* (arrows navigate, AI fills that week) instead
+  of always anchoring to today. Plan weeks in advance — a full current
+  week no longer blocks filling week+2.
+- **Regenerate week** button (with confirm): clears the viewed week's
+  dinner slots and re-plans them with AI in one step
+  (`replace: true` on `/llm/refill-week`, returns what it cleared).
+  Only the targeted slots are touched — lunch entries and other slots
+  survive.
+
 ## [0.4.5] — 2026-09-22
 
 ### Fixed

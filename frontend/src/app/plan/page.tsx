@@ -5,7 +5,7 @@ import { api, type PlanEntry, type Recipe } from "@/lib/api";
 import { Button, Card, Chip, EmptyState, Input, Spinner } from "@/components/ui";
 import AppLayout from "../AppLayout";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { CalendarDays, Plus, Sparkles, Trash2 } from "lucide-react";
+import { CalendarDays, Plus, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 
 interface Proposal {
   date: string;
@@ -50,6 +50,7 @@ export default function PlanPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [pendingDelete, setPendingDelete] = useState<{ id: number; label: string } | null>(null);
+  const [confirmRegen, setConfirmRegen] = useState(false);
   const [refilling, setRefilling] = useState(false);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [refillMsg, setRefillMsg] = useState("");
@@ -97,16 +98,23 @@ export default function PlanPage() {
     }
   }
 
-  async function refillWeek() {
+  async function refillWeek(opts?: { replace?: boolean }) {
+    const replace = opts?.replace ?? false;
     setRefilling(true);
     setProposals([]);
     setRefillMsg("");
     try {
-      const res = await api.refillWeek({ days: 7, slots: ["dinner"] });
+      const res = await api.refillWeek({
+        days: 7,
+        slots: ["dinner"],
+        start_date: weekStart || undefined,
+        replace,
+      });
       if (res.message) {
         setRefillMsg(res.message);
       } else {
         const parts: string[] = [];
+        if (res.cleared?.length) parts.push(`Cleared ${res.cleared.length}`);
         if (res.filled.length) parts.push(`Planned ${res.filled.length} from your book`);
         if (res.proposals.length) parts.push(`${res.proposals.length} new idea${res.proposals.length === 1 ? "" : "s"} below`);
         setRefillMsg(parts.join(" · ") || "Nothing to add");
@@ -172,6 +180,9 @@ export default function PlanPage() {
         <div className="flex gap-2">
           <Button onClick={() => void refillWeek()} disabled={refilling} variant="accent">
             <Sparkles size={18} aria-hidden /> {refilling ? "Thinking…" : "Refill week"}
+          </Button>
+          <Button onClick={() => setConfirmRegen(true)} disabled={refilling} variant="ghost">
+            <RotateCcw size={18} aria-hidden /> Regenerate
           </Button>
           <Button
             onClick={() => { setPickDate(todayISO()); setPickerOpen(true); }}
@@ -331,6 +342,16 @@ export default function PlanPage() {
         detail={pendingDelete?.label}
         onConfirm={remove}
         onCancel={() => setPendingDelete(null)}
+      />
+      <ConfirmDialog
+        open={confirmRegen}
+        title="Regenerate this week?"
+        detail={`This clears the planned dinners for ${weekStart ? "the week you're viewing" : "this week"} and re-plans them with AI. It can't be undone.`}
+        onConfirm={() => {
+          setConfirmRegen(false);
+          void refillWeek({ replace: true });
+        }}
+        onCancel={() => setConfirmRegen(false)}
       />
     </AppLayout>
   );

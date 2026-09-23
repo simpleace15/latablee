@@ -300,13 +300,14 @@ export const api = {
     vision_model: string;
   }) => request<{ saved: boolean }>("/llm/settings", { method: "PUT", body: JSON.stringify(payload) }),
   suggestMeals: () => request<{ suggestions: string }>("/llm/suggest-meals", { method: "POST" }),
-  refillWeek: (payload?: { days?: number; slots?: string[] }) =>
+  refillWeek: (payload?: { days?: number; slots?: string[]; start_date?: string; replace?: boolean }) =>
     request<{
       filled: { date: string; slot: string; recipe_id: number; title: string; why: string }[];
       proposals: {
         date: string; slot: string; from_book: boolean; title: string; why: string;
         recipe: Partial<Recipe> | null;
       }[];
+      cleared?: { date: string; slot: string; title?: string | null; recipe_id?: number | null }[];
       message?: string;
     }>("/llm/refill-week", { method: "POST", body: JSON.stringify(payload ?? {}) }),
   saveProposal: (payload: {

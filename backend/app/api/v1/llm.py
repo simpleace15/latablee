@@ -21,6 +21,7 @@ class LLMSettingsIn(BaseModel):
     api_key: str = ""
     model: str = "gpt-4o-mini"
     vision_model: str = ""
+    system_prompt: str = ""
 
 
 @router.get("/status")
@@ -35,6 +36,7 @@ def get_settings_endpoint(admin: Annotated[User, Depends(get_current_user)]) -> 
     s = llm_client.get_llm_settings()
     return {"base_url": s["base_url"], "model": s["model"],
             "vision_model": s["vision_model"],
+            "system_prompt": s["system_prompt"],
             "api_key_set": bool(s["api_key"])}
 
 
@@ -48,7 +50,7 @@ def put_settings(
     if admin.role != "admin":
         raise HTTPException(403, "Admin only")
     llm_client.save_llm_settings(payload.base_url.strip(), payload.api_key, payload.model,
-                      payload.vision_model)
+                      payload.vision_model, payload.system_prompt)
     return {"saved": True}
 
 

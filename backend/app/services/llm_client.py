@@ -51,6 +51,7 @@ def get_llm_settings() -> dict[str, Any]:
         "api_key": db.get("api_key") or env.llm_api_key or "",
         "model": db.get("model") or env.llm_model,
         "vision_model": db.get("vision_model") or env.llm_vision_model or "",
+        "system_prompt": db.get("system_prompt") or "",
     }
 
 
@@ -58,10 +59,14 @@ def llm_configured() -> bool:
     return bool(get_llm_settings()["base_url"])
 
 
-def save_llm_settings(base_url: str, api_key: str, model: str, vision_model: str) -> None:
+def save_llm_settings(base_url: str, api_key: str, model: str, vision_model: str,
+                      system_prompt: str | None = None) -> None:
     with Session(get_engine()) as session:
-        for key, value in (("base_url", base_url), ("api_key", api_key), ("model", model),
-                           ("vision_model", vision_model)):
+        pairs: list[tuple[str, str]] = [("base_url", base_url), ("api_key", api_key),
+                                        ("model", model), ("vision_model", vision_model)]
+        if system_prompt is not None:
+            pairs.append(("system_prompt", system_prompt))
+        for key, value in pairs:
             row = session.get(Setting, f"llm.{key}")
             if row is None:
                 session.add(Setting(key=f"llm.{key}", value=value))
@@ -118,9 +123,15 @@ def chat(prompt: str, json_mode: bool = False, image_b64: str | None = None) -> 
             {"type": "text", "text": prompt},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
         ]
+    messages: list[dict[str, Any]] = []
+    # Admin-authored extra instructions ride along as a system message on EVERY call
+    # (refill, suggestions, vision, voice) so one edit retunes the whole AI.
+    if s.get("system_prompt", "").strip():
+        messages.append({"role": "system", "content": s["system_prompt"]})
+    messages.append({"role": "user", "content": content})
     body: dict[str, Any] = {
         "model": s["vision_model"] if image_b64 and s["vision_model"] else s["model"],
-        "messages": [{"role": "user", "content": content}],
+        "messages": messages,
         "temperature": 0.4,
     }
     want_json = json_mode
@@ -158,7 +169,9 @@ def chat(prompt: str, json_mode: bool = False, image_b64: str | None = None) -> 
         except Exception:
             retry_prompt = prompt + "\n\nRespond with ONLY a JSON object."
             body2 = dict(body)
-            body2["messages"] = [{"role": "user", "content": retry_prompt}]
+            # keep the admin system message; replace only the user turn
+            body2["messages"] = [m for m in body["messages"] if m["role"] == "system"]
+            body2["messages"].append({"role": "user", "content": retry_prompt})
             body2.pop("response_format", None)
             with httpx.Client(timeout=_llm_timeout()) as client:
                 resp = client.post(url, json=body2, headers=headers)

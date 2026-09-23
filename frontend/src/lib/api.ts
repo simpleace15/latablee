@@ -291,7 +291,7 @@ export const api = {
   // llm
   llmStatus: () => request<{ configured: boolean }>("/llm/status"),
   llmSettings: () =>
-    request<{ base_url: string; model: string; vision_model: string; api_key_set: boolean }>(
+    request<{ base_url: string; model: string; vision_model: string; system_prompt: string; api_key_set: boolean }>(
       "/llm/settings",
     ),
   saveLLMSettings: (payload: {
@@ -299,6 +299,7 @@ export const api = {
     api_key: string;
     model: string;
     vision_model: string;
+    system_prompt: string;
   }) => request<{ saved: boolean }>("/llm/settings", { method: "PUT", body: JSON.stringify(payload) }),
   suggestMeals: () => request<{ suggestions: string }>("/llm/suggest-meals", { method: "POST" }),
   refillWeek: (payload?: { days?: number; slots?: string[]; start_date?: string; replace?: boolean }) =>

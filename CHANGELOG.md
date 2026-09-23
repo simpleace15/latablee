@@ -3,6 +3,16 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.5.2] — 2026-09-23
+
+### Added
+- **Custom AI instructions** in Settings → AI endpoint: free-text extra
+  instructions appended to *every* AI call (meal planning, suggestions,
+  photo import, voice). One place to retune the whole AI, e.g.
+  "Always prefer budget-friendly meals. Suggest leftovers on Fridays."
+- JSON retry (for servers that ignore `response_format`) now preserves
+  the custom instructions instead of dropping them.
+
 ## [0.5.1] — 2026-09-23
 
 ### Added

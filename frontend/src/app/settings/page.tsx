@@ -41,7 +41,7 @@ export default function SettingsPage() {
   const [restoreMsg, setRestoreMsg] = useState("");
   const [restoreBusy, setRestoreBusy] = useState(false);
   const [prefsSaved, setPrefsSaved] = useState(false);
-  const [llm, setLlm] = useState({ base_url: "", api_key: "", model: "", vision_model: "" });
+  const [llm, setLlm] = useState({ base_url: "", api_key: "", model: "", vision_model: "", system_prompt: "" });
   const [llmKeySet, setLlmKeySet] = useState(false);
   const [llmSaved, setLlmSaved] = useState(false);
   // admin diagnostics
@@ -73,7 +73,7 @@ export default function SettingsPage() {
               const lg = await api.adminLlmLog();
               setLlmLog(lg.entries);
             } catch { /* non-admin or older backend */ }
-            setLlm((prev) => ({ ...prev, base_url: s.base_url, model: s.model, vision_model: s.vision_model }));
+            setLlm((prev) => ({ ...prev, base_url: s.base_url, model: s.model, vision_model: s.vision_model, system_prompt: s.system_prompt ?? "" }));
             setLlmKeySet(s.api_key_set);
           } catch {
             /* not admin or not configured yet */
@@ -219,6 +219,7 @@ export default function SettingsPage() {
         api_key: llm.api_key || "",
         model: llm.model || "gpt-4o-mini",
         vision_model: llm.vision_model || "",
+        system_prompt: llm.system_prompt,
       });
       setLlmSaved(true);
       setTimeout(() => setLlmSaved(false), 2500);
@@ -409,6 +410,20 @@ export default function SettingsPage() {
               value={llm.api_key} onChange={(e) => setLlm({ ...llm, api_key: e.target.value })} />
             <Input label="Model" value={llm.model} onChange={(e) => setLlm({ ...llm, model: e.target.value })} />
             <Input label="Vision model (for photo import)" value={llm.vision_model} onChange={(e) => setLlm({ ...llm, vision_model: e.target.value })} />
+            <div>
+              <span className="mb-1.5 block text-sm font-semibold">Custom AI instructions</span>
+              <textarea
+                className="w-full rounded-[12px] px-3 py-2 text-base min-h-[96px]"
+                style={{ background: "var(--color-muted)", color: "var(--color-foreground)", border: "1px solid var(--color-border)" }}
+                value={llm.system_prompt}
+                onChange={(e) => setLlm({ ...llm, system_prompt: e.target.value })}
+                placeholder="Extra instructions for every AI reply — e.g. Always prefer budget-friendly meals. Suggest leftovers night on Fridays."
+                aria-label="Custom AI instructions"
+              />
+              <p className="mt-1 text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+                Appended to every AI call — meal planning, suggestions, photo import, voice.
+              </p>
+            </div>
             <Input
               label="AI timeout — seconds (default 120; raise it if your model is slow or cold-loading)"
               value={llmTimeout}

@@ -3,6 +3,32 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.6.1] — 2026-09-24
+
+### Fixed — reel-import reliability (real-world failures from Tyler's instance)
+- **No more "Load failed"**: `POST /llm/reel` now returns a `job_id`
+  immediately and the pipeline runs in the background. The app polls
+  `GET /llm/reel/{job_id}` every 2s, so Safari's idle-request abort
+  (60–120s) can no longer kill a 100–220s extraction — the server-side
+  job survives a client disconnect and its draft is kept.
+- **Live progress**: the Reel tab shows the real pipeline stage
+  (Downloading % → Transcribing (platform captions / local whisper) →
+  Reading frames → AI reading) with an elapsed-seconds counter. Refill
+  and Find-something-new buttons now show live elapsed seconds too.
+- **Result durability + instant retry**: finished drafts are cached in
+  SQLite keyed by normalized video URL (TTL 1 day). Resubmitting the
+  same reel returns the cached draft instantly (200, no re-download) —
+  yesterday's two lost ~3-minute extractions would now be recovered.
+- **AI-busy hardening**: `chat()` retries once after 5s on 5xx (the
+  llama.cpp forge rejects while its single slot drains an abandoned
+  generation) and only surfaces the error after the retry.
+- **Thinking-token waste**: JSON-mode calls append "No thinking, no
+  preamble — output JSON only." and `_extract_json` strips any
+  leading `</think>` block before parsing — qwen-style reasoning no
+  longer bloats or breaks extraction.
+- 7 new tests (job flow, cached retry, URL normalization, 5xx retry,
+  4xx no-retry, thinking strip) — 87 total.
+
 ## [0.6.0] — 2026-09-24
 
 ### Added — the flagship: **Reel import** 🎬

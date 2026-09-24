@@ -20,6 +20,17 @@ function emptyRecipe(): Partial<Recipe> {
   };
 }
 
+const STAGE_LABELS: Record<string, string> = {
+  queued: "Queued",
+  starting: "Starting…",
+  downloading: "Downloading video…",
+  transcribing: "Transcribing…",
+  "reading frames": "Reading frames…",
+  thinking: "AI is reading the video…",
+  done: "Done",
+  error: "Failed",
+};
+
 export default function NewRecipePage() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("manual");
@@ -34,6 +45,7 @@ export default function NewRecipePage() {
   // url / photo / ai state
   const [url, setUrl] = useState("");
   const [reelUrl, setReelUrl] = useState("");
+  const [reelJob, setReelJob] = useState<{ stage: string; detail: string; elapsed_seconds: number } | null>(null);
   const [aiPrompt, setAiPrompt] = useState("");
   const [parsed, setParsed] = useState<Partial<Recipe> | null>(null);
   const [busy, setBusy] = useState(false);
@@ -113,16 +125,37 @@ export default function NewRecipePage() {
     }
   }
 
+  async function pollReelJob(jobId: string) {
+    // poll every 2s until done; updates the phase chip + elapsed each tick
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 2000));
+      const job = await api.reelJob(jobId);
+      setReelJob(job);
+      if (job.done) {
+        if (job.result) setParsed({ ...emptyRecipe(), ...job.result });
+        else setError(job.error || "Extraction failed");
+        setBusy(false);
+        return;
+      }
+    }
+  }
+
   async function importReel() {
     if (!reelUrl.trim()) return;
     setBusy(true);
     setError("");
+    setReelJob(null);
     try {
       const res = await api.importReel(reelUrl);
-      setParsed({ ...emptyRecipe(), ...res.parsed });
+      if (res.cached && res.parsed) {
+        setParsed({ ...emptyRecipe(), ...res.parsed });
+        setBusy(false);
+        return;
+      }
+      if (!res.job_id) throw new Error("No job returned");
+      await pollReelJob(res.job_id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't extract a recipe from that video");
-    } finally {
       setBusy(false);
     }
   }
@@ -415,8 +448,25 @@ export default function NewRecipePage() {
             onChange={(e) => setReelUrl(e.target.value)}
             placeholder="https://www.tiktok.com/@creator/video/…"
           />
+          {busy && reelJob && (
+            <div className="mt-3 rounded-[12px] p-3" style={{ background: "var(--color-muted)" }}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-bold" style={{ color: "var(--color-foreground)" }}>
+                  {STAGE_LABELS[reelJob.stage] ?? reelJob.stage}
+                </span>
+                <span className="text-xs tabular-nums" style={{ color: "var(--color-muted-foreground)" }}>
+                  {Math.round(reelJob.elapsed_seconds)}s
+                </span>
+              </div>
+              {reelJob.detail && (
+                <p className="mt-1 text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+                  {reelJob.detail}
+                </p>
+              )}
+            </div>
+          )}
           <Button className="mt-4 w-full" size="lg" onClick={() => void importReel()} disabled={busy || !reelUrl.trim()}>
-            {busy ? "Watching the video…" : "Grab the recipe"}
+            {busy ? "Working…" : "Grab the recipe"}
           </Button>
         </Card>
       ) : tab === "photo" ? (

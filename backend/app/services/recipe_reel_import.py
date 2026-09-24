@@ -14,6 +14,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -81,7 +82,7 @@ def _probe_duration(path: str) -> float:
         return 0.0
 
 
-def _download(url: str, tmp: Path) -> dict:
+def _download(url: str, tmp: Path, progress: Callable[[str, str], None] | None = None) -> dict:
     """yt-dlp: video file + platform captions when available. Raises RuntimeError on failure."""
     import yt_dlp
 
@@ -103,6 +104,15 @@ def _download(url: str, tmp: Path) -> dict:
         "socket_timeout": 30,
         "retries": 2,
     }
+    if progress:
+        def hook(d: dict) -> None:
+            if d.get("status") == "downloading":
+                total = d.get("total_bytes") or d.get("total_bytes_estimate")
+                done = d.get("downloaded_bytes")
+                pct = f" {round(100 * done / total)}%" if total and done else ""
+                progress("downloading", pct)
+        opts["progress_hooks"] = [hook]
+
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=True)
     # outtmpl is video.<ext> and subs land as video.<lang>.vtt — exclude subs/parts and
@@ -193,8 +203,11 @@ def _sample_frames(video_path: str, tmp: Path) -> list[str]:
     return frames
 
 
-def import_from_reel(url: str) -> dict[str, Any]:
-    """Full pipeline: download -> captions/whisper -> frames -> vision LLM -> draft."""
+def import_from_reel(
+    url: str, progress: Callable[[str, str], None] | None = None
+) -> dict[str, Any]:
+    """Full pipeline: download -> captions/whisper -> frames -> vision LLM -> draft.
+    progress(stage, detail) is called as each stage starts (for the job store)."""
     with tempfile.TemporaryDirectory(prefix="latablee-reel-") as td:
         tmp = Path(td)
         dl = _download(url, tmp)
@@ -203,10 +216,17 @@ def import_from_reel(url: str) -> dict[str, Any]:
             transcript = _vtt_to_text(sub)
             if transcript:
                 break
-        if not transcript:
+        if transcript:
+            if progress:
+                progress("transcribing", "using platform captions")
+        else:
+            if progress:
+                progress("transcribing", "listening to the video (local whisper)")
             audio = _extract_audio(dl["path"], tmp)
             if audio:
                 transcript = _transcribe(audio)
+        if progress:
+            progress("reading frames", "")
         frames = _sample_frames(dl["path"], tmp)
         if not transcript and not frames:
             raise RuntimeError("No transcript or frames could be extracted from this URL")
@@ -218,6 +238,8 @@ def import_from_reel(url: str) -> dict[str, Any]:
             parts.append("VIDEO FRAMES (sampled through the video):")
         prompt = PROMPT + "\n\n" + "\n\n".join(parts)
 
+        if progress:
+            progress("thinking", "reading transcript + frames")
         b64_list = frames or None
         text = chat(prompt, json_mode=True, image_b64=b64_list)
         try:

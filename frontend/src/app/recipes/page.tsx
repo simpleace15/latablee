@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api, type Recipe } from "@/lib/api";
+import { useElapsedTimer } from "@/lib/useElapsedTimer";
 import { Button, Card, Chip, EmptyState, Spinner } from "@/components/ui";
 import AppLayout from "../AppLayout";
 import { ChefHat, Heart, Plus, Search, Sparkles } from "lucide-react";
@@ -16,6 +17,7 @@ export default function RecipesPage() {
   const [error, setError] = useState("");
   const [ideas, setIdeas] = useState<Array<Partial<Recipe> & { cuisine?: string; why?: string }>>([]);
   const [ideaBusy, setIdeaBusy] = useState(false);
+  const ideaElapsed = useElapsedTimer(ideaBusy);
   const [savingId, setSavingId] = useState("");
 
   const load = useCallback(async (query: string, tag: string) => {
@@ -80,7 +82,7 @@ export default function RecipesPage() {
         <h1 className="text-2xl">Recipes</h1>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={() => void findIdeas()} disabled={ideaBusy}>
-            <Sparkles size={18} aria-hidden /> {ideaBusy ? "Thinking…" : "Find something new"}
+            <Sparkles size={18} aria-hidden /> {ideaBusy ? `Thinking… ${ideaElapsed}s` : "Find something new"}
           </Button>
           <Link href="/recipes/new/" className="pressable">
             <Button>

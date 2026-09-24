@@ -140,6 +140,16 @@ class WebhookEvent(TimestampMixin, SQLModel, table=True):
     delivered_at: datetime | None = None
 
 
+class ReelDraftCache(TimestampMixin, SQLModel, table=True):
+    """Finished reel-import drafts keyed by normalized video URL (TTL one day).
+    Makes retries idempotent — a re-submit of the same reel skips download+transcribe."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    url_key: str = Field(unique=True, index=True)
+    source_url: str
+    draft: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+
+
 class Setting(TimestampMixin, SQLModel, table=True):
     """Runtime-editable app settings (LLM config, feature flags). Admin-managed."""
 

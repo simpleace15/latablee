@@ -288,11 +288,24 @@ export const api = {
     });
   },
   importReel: (url: string) =>
-    request<{ parsed: Partial<Recipe>; note: string }>("/llm/reel", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url }),
-    }),
+    request<{ job_id?: string; cached?: boolean; parsed?: Partial<Recipe>; poll_after_seconds?: number; note?: string }>(
+      "/llm/reel",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      },
+    ),
+  reelJob: (jobId: string) =>
+    request<{
+      stage: string; detail: string; elapsed_seconds: number; done: boolean;
+      error: string | null; result: Partial<Recipe> | null;
+    }>(`/llm/reel/${jobId}`),
+  reelLatest: () =>
+    request<{
+      job_id: string; stage: string; detail: string; elapsed_seconds: number;
+      done: boolean; error: string | null; result: Partial<Recipe> | null;
+    }>("/llm/reel/latest"),
 
   // llm
   llmStatus: () => request<{ configured: boolean }>("/llm/status"),

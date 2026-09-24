@@ -95,10 +95,7 @@ def test_llm_connection() -> dict[str, Any]:
             "max_tokens": 5, "temperature": 0}
     t0 = time.monotonic()
     try:
-        with httpx.Client(timeout=_llm_timeout()) as client:
-            resp = client.post(url, json=body, headers=headers)
-            resp.raise_for_status()
-            data = resp.json()
+        data = _post_chat(url, body, headers)
         dt = round(time.monotonic() - t0, 2)
         text = (data["choices"][0]["message"]["content"] or "")[:80]
         _log_call({"kind": "test", "model": s["model"], "status": "ok", "seconds": dt})
@@ -108,6 +105,30 @@ def test_llm_connection() -> dict[str, Any]:
         msg = f"{type(exc).__name__}: {exc}"[:300]
         _log_call({"kind": "test", "model": s["model"], "status": "error", "seconds": dt, "error": msg})
         return {"ok": False, "seconds": dt, "model": s["model"], "error": msg}
+
+
+def _post_chat(url: str, body: dict, headers: dict) -> dict:
+    """POST a chat completion; retry ONCE after 5s on 5xx (forge slot jams reject with
+    500/503 while a previous generation is still draining). Raises RuntimeError with a
+    distinct 'AI busy' message when the endpoint keeps refusing."""
+    last: Exception | None = None
+    for attempt in (1, 2):
+        try:
+            with httpx.Client(timeout=_llm_timeout()) as client:
+                resp = client.post(url, json=body, headers=headers)
+                resp.raise_for_status()
+                return resp.json()
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code < 500 or attempt == 2:
+                raise
+            last = exc
+            time.sleep(5)  # give the busy endpoint a moment, then try again
+        except httpx.ConnectError as exc:
+            if attempt == 2:
+                raise
+            last = exc
+            time.sleep(5)
+    raise last  # pragma: no cover — loop always returns or raises above
 
 
 def chat(
@@ -120,6 +141,10 @@ def chat(
         raise RuntimeError("LLM not configured")
     url = s["base_url"].rstrip("/") + "/chat/completions"
     t0 = time.monotonic()
+    if json_mode:
+        # reasoning models emit hundreds of </think> tokens before the JSON — forbid + strip (some
+        # servers reject chat_template_kwargs, so this is prompt-side, not a body flag)
+        prompt += "\n\nNo thinking, no preamble — output JSON only."
     content: Any = prompt
     if image_b64:
         frames = image_b64 if isinstance(image_b64, list) else [image_b64]
@@ -146,10 +171,7 @@ def chat(
     if s["api_key"]:
         headers["Authorization"] = f"Bearer {s['api_key']}"
     try:
-        with httpx.Client(timeout=_llm_timeout()) as client:
-            resp = client.post(url, json=body, headers=headers)
-            resp.raise_for_status()
-            data = resp.json()
+        data = _post_chat(url, body, headers)
         dt = round(time.monotonic() - t0, 2)
         _log_call({"kind": "chat", "model": body["model"], "status": "ok",
                    "seconds": dt, "prompt_chars": len(prompt),
@@ -180,10 +202,7 @@ def chat(
             body2["messages"] = [m for m in body["messages"] if m["role"] == "system"]
             body2["messages"].append({"role": "user", "content": retry_prompt})
             body2.pop("response_format", None)
-            with httpx.Client(timeout=_llm_timeout()) as client:
-                resp = client.post(url, json=body2, headers=headers)
-                resp.raise_for_status()
-                data = resp.json()
+            data = _post_chat(url, body2, headers)
             _log_call({"kind": "chat", "model": body["model"], "status": "ok",
                        "seconds": round(time.monotonic() - t0, 2), "note": "json retry (no response_format)"})
             return _extract_json(data["choices"][0]["message"]["content"])
@@ -191,8 +210,10 @@ def chat(
 
 
 def _extract_json(text: str) -> str:
-    """Tolerate models that wrap JSON in prose/code fences."""
+    """Tolerate models that wrap JSON in prose/code fences or </think> blocks."""
     t = text.strip()
+    if "</think>" in t:  # strip leading reasoning (qwen/deepwrite-style models)
+        t = t.split("</think>", 1)[1].strip()
     if t.startswith("```"):
         t = t.strip("`")
         if t.lower().startswith("json"):

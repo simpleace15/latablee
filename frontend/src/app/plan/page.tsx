@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useElapsedTimer } from "@/lib/useElapsedTimer";
 import { api, type PlanEntry, type Recipe } from "@/lib/api";
 import { Button, Card, Chip, EmptyState, Input, Spinner } from "@/components/ui";
 import AppLayout from "../AppLayout";
@@ -53,6 +54,7 @@ export default function PlanPage() {
   const [pendingDelete, setPendingDelete] = useState<{ id: number; label: string } | null>(null);
   const [confirmRegen, setConfirmRegen] = useState(false);
   const [refilling, setRefilling] = useState(false);
+  const refillElapsed = useElapsedTimer(refilling);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [refillMsg, setRefillMsg] = useState("");
   const [savingIdx, setSavingIdx] = useState<number | null>(null);
@@ -191,7 +193,7 @@ export default function PlanPage() {
         <h1 className="text-2xl">The plan</h1>
         <div className="flex gap-2">
           <Button onClick={() => void refillWeek()} disabled={refilling} variant="accent">
-            <Sparkles size={18} aria-hidden /> {refilling ? "Thinking…" : "Refill week"}
+            <Sparkles size={18} aria-hidden /> {refilling ? `Thinking… ${refillElapsed}s` : "Refill week"}
           </Button>
           <Button onClick={() => setConfirmRegen(true)} disabled={refilling} variant="ghost">
             <RotateCcw size={18} aria-hidden /> Regenerate

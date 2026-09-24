@@ -92,6 +92,13 @@ Versioned under `/api/v1`, OpenAPI docs at `/api/docs`, full guide with curl exa
 | `GET /api/v1/events?after_id=` | Event log for polling integrations |
 | `GET /api/v1/export/json` · `/export/archive` | JSON export · full backup |
 
+### Calendar feed
+
+```bash
+# subscribe from any calendar app (token = device token from Settings)
+curl "http://your-host:3000/api/v1/calendar?token=lat_..."
+```
+
 ### Voice endpoint example
 
 ```bash

@@ -1,6 +1,7 @@
 import { AuthGate } from "./AuthGate";
 import { SideNav, TabBar } from "./TabBar";
 import { ServiceWorker } from "./ServiceWorker";
+import LiveSync from "./LiveSync";
 
 /**
  * Shell for authed app pages.
@@ -16,6 +17,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {children}
       </div>
       <TabBar />
+      <LiveSync />
       <ServiceWorker />
     </AuthGate>
   );

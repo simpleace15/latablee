@@ -3,6 +3,21 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.5.3] — 2026-09-23
+
+### Added
+- **Find something new** on the Recipes page: the AI proposes dishes you
+  *don't* have yet (varied cuisine/protein, respects your planning rules,
+  avoids titles already in the book). Review the cards, tap "Add to book"
+  to save one — nothing lands in your book unreviewed.
+- **Calendar feed** (`/api/v1/calendar?token=…`): subscribe your meal plan
+  from any phone calendar app or Home Assistant. Read-only, scoped to a
+  device token, RFC 5545 compliant (line folding, DATE values).
+  Settings → Calendar feed builds the URL from any existing token.
+- **Live sync**: pages (Today, Plan, Lists) now poll for integration
+  events every 15s and reload when the plan or a shopping list changes —
+  a partner's edits show up without a manual refresh.
+
 ## [0.5.2] — 2026-09-23
 
 ### Added

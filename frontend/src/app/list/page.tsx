@@ -46,6 +46,13 @@ export default function ListPage() {
     void load();
   }, [load]);
 
+  // Live sync: someone else touched a shopping list → reload.
+  useEffect(() => {
+    const onChange = () => void load();
+    window.addEventListener("latablee:changed", onChange);
+    return () => window.removeEventListener("latablee:changed", onChange);
+  }, [load]);
+
   // Drain queued check-offs when we come back online (page load, tab focus, or the
   // browser's online event fires). Fresh data loads right after the queue empties.
   useEffect(() => {

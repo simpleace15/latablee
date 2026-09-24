@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, type Household, type User } from "@/lib/api";
 import { Button, Card, Input, Spinner } from "@/components/ui";
 import AppLayout from "../AppLayout";
-import { Bot, Database, Download, KeyRound, Link2, LogOut, Moon, PackageOpen, RotateCcw, Sun, Trash2, Users } from "lucide-react";
+import { Bot, CalendarDays, Database, Download, KeyRound, Link2, LogOut, Moon, PackageOpen, RotateCcw, Sun, Trash2, Users } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 const TIMEZONES = [
@@ -36,6 +36,7 @@ export default function SettingsPage() {
   const [newTokenName, setNewTokenName] = useState("");
   const [newTokenRaw, setNewTokenRaw] = useState("");
   const [tokenMsg, setTokenMsg] = useState("");
+  const [icsToken, setIcsToken] = useState("");
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [confirmRestore, setConfirmRestore] = useState(false);
   const [restoreMsg, setRestoreMsg] = useState("");
@@ -595,6 +596,30 @@ export default function SettingsPage() {
                 )}
               </div>
             ))}
+          </div>
+        )}
+      </Card>
+      {/* Calendar feed */}
+      <Card className="mb-4 p-5">
+        <div className="mb-3 flex items-center gap-2">
+          <CalendarDays size={18} aria-hidden style={{ color: "var(--color-primary)" }} />
+          <h2 className="font-heading text-lg">Calendar feed</h2>
+        </div>
+        <p className="mb-3 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+          Subscribe your meal plan from any calendar app (iPhone, Google Calendar,
+          Home Assistant). Paste one of your device tokens — the feed is read-only.
+        </p>
+        <Input
+          label=""
+          value={icsToken}
+          onChange={(e) => setIcsToken(e.target.value)}
+          placeholder="Paste a device token (lat_…)"
+        />
+        {icsToken.startsWith("lat_") && (
+          <div className="mt-2 rounded-[12px] p-3" style={{ background: "var(--color-muted)" }}>
+            <code className="break-all text-sm" style={{ color: "var(--color-foreground)" }}>
+              {`${window.location.origin}/api/v1/calendar?token=${icsToken}`}
+            </code>
           </div>
         )}
       </Card>

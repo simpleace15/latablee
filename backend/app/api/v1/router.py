@@ -4,6 +4,7 @@ from fastapi import APIRouter
 from app.api.v1 import (
                         admin,
                         auth,
+                        calendar,
                         events,
                         export,
                         household,
@@ -26,6 +27,7 @@ api_router.include_router(lists.router, prefix="/lists", tags=["lists"])
 api_router.include_router(import_router.router, prefix="/import", tags=["import"])
 api_router.include_router(llm.router, prefix="/llm", tags=["llm"])
 api_router.include_router(voice.router, prefix="/voice", tags=["voice"])
+api_router.include_router(calendar.router, prefix="", tags=["calendar"])
 api_router.include_router(export.router, prefix="/export", tags=["export"])
 api_router.include_router(events.router, prefix="/events", tags=["events"])
 api_router.include_router(tokens.router, prefix="/tokens", tags=["tokens"])

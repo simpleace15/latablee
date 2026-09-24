@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api, type PlanEntry, type ShoppingList, type User } from "@/lib/api";
 import { Card, EmptyState, Spinner } from "@/components/ui";
@@ -28,24 +28,34 @@ export default function TodayPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const [u, plan, listsRes] = await Promise.all([
-          api.me(),
-          api.plan(todayISO(), 1),
-          api.lists(),
-        ]);
-        setUser(u);
-        setEntries(plan.entries ?? []);
-        setLists(listsRes);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Couldn't load");
-      } finally {
-        setLoading(false);
-      }
-    })();
+  const load = useCallback(async () => {
+    try {
+      const [u, plan, listsRes] = await Promise.all([
+        api.me(),
+        api.plan(todayISO(), 1),
+        api.lists(),
+      ]);
+      setUser(u);
+      setEntries(plan.entries ?? []);
+      setLists(listsRes);
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't load");
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  // Live sync: partner replanned tonight or ticked the shopping list → refresh.
+  useEffect(() => {
+    const onChange = () => void load();
+    window.addEventListener("latablee:changed", onChange);
+    return () => window.removeEventListener("latablee:changed", onChange);
+  }, [load]);
 
   const dinner = entries.find((e) => e.slot === "dinner") ?? entries[0] ?? null;
   const activeList = lists[0] ?? null;

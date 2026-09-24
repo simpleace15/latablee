@@ -134,6 +134,54 @@ class RefillProposal(BaseModel):
     recipe: dict | None = None  # full recipe JSON when from_book=False
 
 
+@router.post("/discover")
+def discover_new(
+    payload: dict,
+    user: Annotated[User, Depends(require_household)],
+    session: Annotated[Session, Depends(get_session)],
+) -> dict:
+    """AI proposes dishes NOT in the recipe book yet — variety hunting.
+
+    Returns full recipe drafts; saving is a separate explicit call
+    (POST /llm/save-proposal) so nothing lands in the book unreviewed.
+    """
+    if not llm_client.llm_configured():
+        raise HTTPException(409, "No AI endpoint configured — set it in Settings")
+    n = max(1, min(int(payload.get("count") or 3), 8))
+    want = (payload.get("craving") or "").strip()
+    titles = [r.title for r in session.exec(select(Recipe).where(Recipe.household_id == user.household_id)).all()]
+    h = session.get(Household, user.household_id)
+    existing = ", ".join(titles) if titles else "(your book is empty)"
+    rules = "; ".join(h.planning_rules or [])
+    prompt = (
+        f"Propose {n} dinner ideas the household does NOT already have recipes for. "
+        f"Their existing recipes (do NOT repeat these): {existing}. "
+        + (f"Additional rules: {rules}. " if rules else "")
+        + (f"They are craving: {want}. " if want else "")
+        + "Vary cuisine and protein across the ideas. "
+        'Reply ONLY with JSON: {"ideas": [{"title": string, "description": string, '
+        '"cuisine": string, "why": string, "servings": number, "prep_minutes": number, '
+        '"ingredients": [{"name": string, "quantity": number, "unit": string}], '
+        '"instructions": [string]}]}'
+    )
+    try:
+        text = llm_client.chat(prompt, json_mode=True)
+        import json as _json
+
+        data = _json.loads(text)
+        ideas = data.get("ideas") or []
+    except Exception as exc:
+        raise HTTPException(502, f"AI endpoint failed: {exc}") from exc
+    lower_existing = {t.strip().lower() for t in titles}
+    ideas = [i for i in ideas if isinstance(i, dict)
+             and (i.get("title") or "").strip().lower() not in lower_existing]
+    from app.services.unit_conversion import normalize_ingredient_units
+
+    for i in ideas:
+        i["ingredients"] = normalize_ingredient_units(i.get("ingredients") or [])
+    return {"ideas": ideas[:n]}
+
+
 @router.post("/refill-week")
 def refill_week(
     user: Annotated[User, Depends(require_household)],

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type PlanEntry, type Recipe } from "@/lib/api";
 import { Button, Card, Chip, EmptyState, Input, Spinner } from "@/components/ui";
 import AppLayout from "../AppLayout";
@@ -74,6 +74,17 @@ export default function PlanPage() {
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  // Live sync: another user/device changed the plan → reload the viewed week.
+  const weekStartRef = useRef<string>("");
+  useEffect(() => {
+    weekStartRef.current = weekStart;
+  }, [weekStart]);
+  useEffect(() => {
+    const onChange = () => void load(weekStartRef.current || undefined);
+    window.addEventListener("latablee:changed", onChange);
+    return () => window.removeEventListener("latablee:changed", onChange);
   }, [load]);
 
   async function addEntry() {

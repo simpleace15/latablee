@@ -318,6 +318,11 @@ export const api = {
     method: "POST",
     body: JSON.stringify(payload),
   }),
+  discoverIdeas: (payload?: { count?: number; craving?: string }) =>
+    request<{ ideas: Array<Partial<Recipe> & { cuisine?: string; why?: string }> }>(
+      "/llm/discover",
+      { method: "POST", body: JSON.stringify(payload ?? {}) },
+    ),
   generateRecipe: (payload: { prompt?: string; ingredients?: string[] }) =>
     request<{ parsed: Partial<Recipe> }>("/llm/generate-recipe", {
       method: "POST",
@@ -345,6 +350,12 @@ export const api = {
       body: form,
     });
   },
+
+  // events (poll for live sync)
+  eventsSince: (afterId: number) =>
+    request<{ events: Array<{ id: number; event: string; payload: Record<string, unknown>; delivered_at: string | null }> }>(
+      `/events?after_id=${afterId}`,
+    ),
 
   // voice
   voiceCommand: (transcript: string) =>

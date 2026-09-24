@@ -260,7 +260,8 @@ export default function PlanPage() {
 
       {error && <p className="mb-3 text-sm font-semibold" style={{ color: "var(--color-destructive)" }}>{error}</p>}
 
-      <div className="grid grid-cols-1 gap-3 lg:flex lg:gap-2">
+      {/* stacked on every breakpoint — 7 side-by-side columns are too cramped on desktop */}
+      <div className="grid grid-cols-1 gap-3">
         {days.map(({ iso, entries: dayEntries }) => (
           <Card key={iso} className="p-4">
             <div className="mb-2 flex items-center justify-between">

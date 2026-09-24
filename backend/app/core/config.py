@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "LaTablée"
-    version: str = "0.6.1"
+    version: str = "0.6.2"
     api_v1_prefix: str = "/api/v1"
     debug: bool = False
 

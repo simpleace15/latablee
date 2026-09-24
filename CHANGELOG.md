@@ -3,6 +3,13 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.6.2] — 2026-09-24
+
+### Fixed
+- **Plan layout on desktop**: the week was rendering as 7 cramped
+  side-by-side columns on wide screens; it now stacks vertically
+  (one day per row) at every screen size, matching mobile.
+
 ## [0.6.1] — 2026-09-24
 
 ### Fixed — reel-import reliability (real-world failures from Tyler's instance)

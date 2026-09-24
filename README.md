@@ -92,6 +92,13 @@ Versioned under `/api/v1`, OpenAPI docs at `/api/docs`, full guide with curl exa
 | `GET /api/v1/events?after_id=` | Event log for polling integrations |
 | `GET /api/v1/export/json` · `/export/archive` | JSON export · full backup |
 
+### Reel import (video → recipe)
+
+Add recipe → **Reel** tab → paste a TikTok/Instagram/YouTube link. LaTablée
+downloads the video, reads captions or transcribes audio locally
+(faster-whisper), samples frames for on-screen text, and drafts the recipe
+with the AI. Everything stays on your machine.
+
 ### Calendar feed
 
 ```bash

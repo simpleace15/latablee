@@ -287,6 +287,12 @@ export const api = {
       body: form,
     });
   },
+  importReel: (url: string) =>
+    request<{ parsed: Partial<Recipe>; note: string }>("/llm/reel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    }),
 
   // llm
   llmStatus: () => request<{ configured: boolean }>("/llm/status"),

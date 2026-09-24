@@ -110,8 +110,11 @@ def test_llm_connection() -> dict[str, Any]:
         return {"ok": False, "seconds": dt, "model": s["model"], "error": msg}
 
 
-def chat(prompt: str, json_mode: bool = False, image_b64: str | None = None) -> str:
-    """One-shot chat completion. Raises on failure so callers can 502 gracefully."""
+def chat(
+    prompt: str, json_mode: bool = False, image_b64: str | list[str] | None = None
+) -> str:
+    """One-shot chat completion. Raises on failure so callers can 502 gracefully.
+    image_b64 accepts one base64 JPEG or a list (multi-frame, e.g. video reels)."""
     s = get_llm_settings()
     if not s["base_url"]:
         raise RuntimeError("LLM not configured")
@@ -119,9 +122,11 @@ def chat(prompt: str, json_mode: bool = False, image_b64: str | None = None) -> 
     t0 = time.monotonic()
     content: Any = prompt
     if image_b64:
-        content = [
-            {"type": "text", "text": prompt},
-            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
+        frames = image_b64 if isinstance(image_b64, list) else [image_b64]
+        content = [{"type": "text", "text": prompt}]
+        content += [
+            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+            for b64 in frames
         ]
     messages: list[dict[str, Any]] = []
     # Admin-authored extra instructions ride along as a system message on EVERY call
@@ -147,7 +152,9 @@ def chat(prompt: str, json_mode: bool = False, image_b64: str | None = None) -> 
             data = resp.json()
         dt = round(time.monotonic() - t0, 2)
         _log_call({"kind": "chat", "model": body["model"], "status": "ok",
-                   "seconds": dt, "prompt_chars": len(prompt), "image": bool(image_b64)})
+                   "seconds": dt, "prompt_chars": len(prompt),
+                   "image": bool(image_b64),
+                   "images": len(image_b64) if isinstance(image_b64, list) else (1 if image_b64 else 0)})
     except httpx.ReadTimeout as exc:
         dt = round(time.monotonic() - t0, 2)
         msg = f"Timed out after {dt}s — raise the AI timeout in Settings if your model is slow or cold-loading"

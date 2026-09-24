@@ -1,0 +1,101 @@
+# Reel import: URL detection, VTT caption parsing, endpoint flow (pipeline monkeypatched —
+# no network in tests).
+import json
+
+
+def test_extract_url_variants():
+    from app.services.recipe_reel_import import extract_url
+
+    assert extract_url("check this https://www.tiktok.com/@chef/video/123 ok") == \
+        "https://www.tiktok.com/@chef/video/123"
+    assert extract_url("https://www.instagram.com/reel/AbCdEf/") .endswith("/")
+    assert extract_url("youtu.be/dQw4w9WgXcQ via https://youtu.be/dQw4w9WgXcQ") == \
+        "https://youtu.be/dQw4w9WgXcQ"
+    assert extract_url("no link here") is None
+    assert extract_url("") is None
+
+
+def test_vtt_to_text_strips_markup_and_dupes(tmp_path):
+    from app.services.recipe_reel_import import _vtt_to_text
+
+    vtt = tmp_path / "cap.vtt"
+    vtt.write_text(
+        "WEBVTT\nKind: captions\n\n00:00:00.000 --> 00:00:02.000\nAdd two cups of flour\n\n"
+        "00:00:02.000 --> 00:00:04.000\n<00:00:02.000><c> Add two cups of flour</c>\n\n"
+        "00:00:04.000 --> 00:00:06.000\nthen simmer for ten minutes\n",
+    )
+    text = _vtt_to_text(vtt)
+    assert text == "Add two cups of flour then simmer for ten minutes"
+
+
+def test_reel_endpoint_requires_video_url(client, admin):
+    res = client.post("/api/v1/llm/reel", headers=admin, json={"url": "not a link"})
+    assert res.status_code == 422
+    assert "No supported video URL" in res.json()["detail"]
+
+
+def test_reel_endpoint_returns_draft_for_review(client, admin, monkeypatch):
+    import app.services.recipe_reel_import as mod
+
+    called = {}
+
+    def fake_import(url: str) -> dict:
+        called["url"] = url
+        return {
+            "title": "Hot Honey Wings", "servings": 4,
+            "ingredients": [{"name": "wings", "quantity": 2, "unit": "lb"}],
+            "instructions": ["Air fry", "Toss in hot honey"],
+            "source_url": url, "source_name": "Tiktok — chef",
+        }
+
+    monkeypatch.setattr(mod, "import_from_reel", fake_import)
+    res = client.post("/api/v1/llm/reel", headers=admin, json={
+        "url": "hey try this https://www.tiktok.com/@chef/video/999",
+    })
+    assert res.status_code == 200, res.text
+    assert res.json()["parsed"]["title"] == "Hot Honey Wings"
+    assert res.json()["saved"] is False
+    assert called["url"] == "https://www.tiktok.com/@chef/video/999"
+
+
+def test_reel_endpoint_maps_pipeline_errors(client, admin, monkeypatch):
+    import app.services.recipe_reel_import as mod
+
+    monkeypatch.setattr(mod, "import_from_reel",
+                        lambda url: (_ for _ in ()).throw(ValueError("not_a_recipe")))
+    res = client.post("/api/v1/llm/reel", headers=admin, json={"url": "https://youtu.be/x"})
+    assert res.status_code == 422
+    assert "not_a_recipe" in res.json()["detail"]
+
+
+def test_chat_accepts_multiple_frames(monkeypatch):
+    # multi-image message shape: one text part + N image parts
+    from app.services import llm_client as mod
+
+    captured = {}
+
+    class FakeResp:
+        status_code = 200
+        def raise_for_status(self): pass
+        def json(self):
+            return {"choices": [{"message": {"content": json.dumps({"ok": True})}}]}
+
+    class FakeClient:
+        def __init__(self, *a, **k): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def post(self, url, json=None, headers=None):
+            captured["messages"] = json["messages"]
+            return FakeResp()
+
+    monkeypatch.setattr(mod.httpx, "Client", FakeClient)
+    monkeypatch.setattr(mod, "get_llm_settings", lambda: {
+        "base_url": "http://x/v1", "api_key": "", "model": "m",
+        "vision_model": "v", "system_prompt": ""})
+    out = mod.chat("see frames", json_mode=True, image_b64=["AAA", "BBB"])
+    assert out == json.dumps({"ok": True})
+    user_msg = captured["messages"][-1]
+    assert len(user_msg["content"]) == 3
+    assert user_msg["content"][0]["type"] == "text"
+    assert user_msg["content"][1]["image_url"]["url"].endswith(",AAA")
+    assert user_msg["content"][2]["image_url"]["url"].endswith(",BBB")

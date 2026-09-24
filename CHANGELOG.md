@@ -3,6 +3,30 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.6.0] — 2026-09-24
+
+### Added — the flagship: **Reel import** 🎬
+- Paste a TikTok / Instagram / YouTube / Facebook / X video link (or the
+  whole share text) on the new **Reel** tab of Add-recipe, and LaTablée
+  extracts the recipe being made in the video. Fully self-hosted, no
+  accounts, no subscriptions:
+  1. `yt-dlp` downloads the video and grabs platform captions when
+     available (fast path, exact text)
+  2. no captions? **faster-whisper** transcribes the audio *locally*
+     (CPU, int8, `small.en` — override with `LATABLEE_WHISPER_MODEL`)
+  3. **PyAV** samples 6 frames through the video so on-screen ingredient
+     text and measurements reach the AI
+  4. the vision LLM fuses transcript + frames into a structured draft —
+     same review-then-save flow as photo import, with source_url and
+     source_name (creator + platform) preserved
+- `POST /api/v1/llm/reel` accepts bare URLs or full share text; errors
+  are specific (422 not-a-recipe / bad link, 502 extraction failure,
+  422 non-video URL). Non-recipe videos are detected and rejected.
+- `chat()` now supports multiple images (multi-frame vision) — the
+  admin AI log records the frame count per call.
+- Docker image ships ffmpeg + yt-dlp + faster-whisper + av; whisper
+  downloads its model to the data dir on first use (~75 MB, cached).
+
 ## [0.5.3] — 2026-09-23
 
 ### Added

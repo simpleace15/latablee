@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { api, type Ingredient, type Recipe } from "@/lib/api";
 import { Button, Card, Input, Spinner } from "@/components/ui";
 import AppLayout from "../../AppLayout";
-import { Camera, Globe, Keyboard, Sparkles } from "lucide-react";
+import { Camera, Clapperboard, Globe, Keyboard, Sparkles } from "lucide-react";
 
-type Tab = "manual" | "url" | "photo" | "ai";
+type Tab = "manual" | "url" | "photo" | "reel" | "ai";
 
 function emptyRecipe(): Partial<Recipe> {
   return {
@@ -33,6 +33,7 @@ export default function NewRecipePage() {
 
   // url / photo / ai state
   const [url, setUrl] = useState("");
+  const [reelUrl, setReelUrl] = useState("");
   const [aiPrompt, setAiPrompt] = useState("");
   const [parsed, setParsed] = useState<Partial<Recipe> | null>(null);
   const [busy, setBusy] = useState(false);
@@ -112,6 +113,20 @@ export default function NewRecipePage() {
     }
   }
 
+  async function importReel() {
+    if (!reelUrl.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await api.importReel(reelUrl);
+      setParsed({ ...emptyRecipe(), ...res.parsed });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't extract a recipe from that video");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function importPhoto(file: File) {
     setBusy(true);
     setError("");
@@ -175,6 +190,7 @@ export default function NewRecipePage() {
   const tabs: { key: Tab; label: string; icon: typeof Keyboard }[] = [
     { key: "manual", label: "Type it", icon: Keyboard },
     { key: "url", label: "From link", icon: Globe },
+    { key: "reel", label: "Reel", icon: Clapperboard },
     { key: "photo", label: "Photo", icon: Camera },
     { key: "ai", label: "AI", icon: Sparkles },
   ];
@@ -183,7 +199,7 @@ export default function NewRecipePage() {
     <AppLayout>
       <h1 className="mb-4 text-2xl">Add a recipe</h1>
 
-      <div className="mb-5 grid grid-cols-4 gap-2">
+      <div className="mb-5 grid grid-cols-5 gap-2">
         {tabs.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -381,6 +397,27 @@ export default function NewRecipePage() {
               </Button>
             </div>
           )}
+        </Card>
+      ) : tab === "reel" ? (
+        <Card className="p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <Clapperboard size={20} aria-hidden style={{ color: "var(--color-primary)" }} />
+            <h2 className="font-heading text-lg">Import from a reel</h2>
+          </div>
+          <p className="mb-4 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+            Paste a TikTok / Instagram / YouTube video link (or the whole share text).
+            LaTablée downloads it, reads the spoken steps and on-screen text locally, and
+            drafts the recipe — no account or subscription needed.
+          </p>
+          <Input
+            label="Video link"
+            value={reelUrl}
+            onChange={(e) => setReelUrl(e.target.value)}
+            placeholder="https://www.tiktok.com/@creator/video/…"
+          />
+          <Button className="mt-4 w-full" size="lg" onClick={() => void importReel()} disabled={busy || !reelUrl.trim()}>
+            {busy ? "Watching the video…" : "Grab the recipe"}
+          </Button>
         </Card>
       ) : tab === "photo" ? (
         <Card className="p-5">

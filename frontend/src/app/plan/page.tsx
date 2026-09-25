@@ -55,6 +55,7 @@ export default function PlanPage() {
   const [confirmRegen, setConfirmRegen] = useState(false);
   const [refilling, setRefilling] = useState(false);
   const refillElapsed = useElapsedTimer(refilling);
+  const [refillSlots, setRefillSlots] = useState<Slot[]>(["dinner"]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [refillMsg, setRefillMsg] = useState("");
   const [savingIdx, setSavingIdx] = useState<number | null>(null);
@@ -120,7 +121,7 @@ export default function PlanPage() {
     try {
       const res = await api.refillWeek({
         days: 7,
-        slots: ["dinner"],
+        slots: refillSlots.length ? refillSlots : ["dinner"],
         start_date: weekStart || undefined,
         replace,
       });
@@ -192,10 +193,10 @@ export default function PlanPage() {
       <header className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl">The plan</h1>
         <div className="flex gap-2">
-          <Button onClick={() => void refillWeek()} disabled={refilling} variant="accent">
+          <Button onClick={() => void refillWeek()} disabled={refilling || refillSlots.length === 0} variant="accent">
             <Sparkles size={18} aria-hidden /> {refilling ? `Thinking… ${refillElapsed}s` : "Refill week"}
           </Button>
-          <Button onClick={() => setConfirmRegen(true)} disabled={refilling} variant="ghost">
+          <Button onClick={() => setConfirmRegen(true)} disabled={refilling || refillSlots.length === 0} variant="ghost">
             <RotateCcw size={18} aria-hidden /> Regenerate
           </Button>
           <Button
@@ -205,6 +206,25 @@ export default function PlanPage() {
           </Button>
         </div>
       </header>
+
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span className="text-sm font-semibold" style={{ color: "var(--color-muted-foreground)" }}>
+          Refill meals:
+        </span>
+        {SLOTS.map((s2) => (
+          <Chip
+            key={s2}
+            active={refillSlots.includes(s2)}
+            onClick={() =>
+              setRefillSlots((prev) =>
+                prev.includes(s2) ? prev.filter((x) => x !== s2) : [...prev, s2],
+              )
+            }
+          >
+            {SLOT_LABEL[s2]}
+          </Chip>
+        ))}
+      </div>
 
       {refillMsg && (
         <p className="mb-3 rounded-[12px] px-3 py-2 text-sm font-semibold"
@@ -275,11 +295,18 @@ export default function PlanPage() {
               </button>
             </div>
             <div className="flex flex-col gap-2">
-              {dayEntries.length === 0 && (
-                <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>Nothing planned</p>
-              )}
-              {dayEntries.map((e) => (
-                <div key={e.id} className="flex items-center justify-between gap-3 rounded-[12px] px-3 py-2" style={{ background: "var(--color-muted)" }}>
+              {SLOTS.map((slot) => {
+                const slotEntries = dayEntries.filter((e) => e.slot === slot);
+                return (
+                  <div key={slot} className="flex items-start justify-between gap-3">
+                    <div className="flex flex-col gap-2" style={{ minWidth: 0, flex: 1 }}>
+                      {slotEntries.length === 0 ? (
+                        <p className="rounded-[12px] px-3 py-2 text-sm" style={{ color: "var(--color-muted-foreground)", background: "var(--color-muted)", opacity: 0.55 }}>
+                          No {SLOT_LABEL[slot].toLowerCase()} planned
+                        </p>
+                      ) : (
+                        slotEntries.map((e) => (
+                    <div key={e.id} className="flex items-center justify-between gap-3 rounded-[12px] px-3 py-2" style={{ background: "var(--color-muted)" }}>
                   {e.recipe_id ? (
                     <Link href={`/recipes/view/?id=${e.recipe_id}`} className="pressable truncate text-base" aria-label={`Open recipe ${e.title_override || e.recipe_title}`}>
                       <span className="font-semibold capitalize">{e.slot}</span>
@@ -302,7 +329,20 @@ export default function PlanPage() {
                     <Trash2 size={16} aria-hidden />
                   </button>
                 </div>
-              ))}
+                        ))
+                      )}
+                    </div>
+                    <button
+                      className="pressable mt-1 rounded-full p-2"
+                      style={{ color: "var(--color-primary)" }}
+                      onClick={() => { setPickDate(iso); setPickSlot(slot); setPickerOpen(true); }}
+                      aria-label={`Add ${SLOT_LABEL[slot]} on ${iso}`}
+                    >
+                      <Plus size={16} aria-hidden />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </Card>
         ))}

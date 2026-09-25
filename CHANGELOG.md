@@ -3,6 +3,21 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.6.3] — 2026-09-24
+
+### Added — breakfast & lunch planning
+- **Every meal, every day**: the plan page now shows a row per meal
+  (Breakfast / Lunch / Dinner / Other) with a "+" to add directly to
+  that meal, and honest "No lunch planned" placeholders instead of one
+  generic dinner list.
+- **Refill any mix of meals**: pick which meals "Refill week" plans —
+  chips above the plan (Breakfast, Lunch, Dinner, Other), Dinner
+  pre-checked as before. The AI is told to match meal type (breakfasty
+  breakfasts, lighter lunches, hearty dinners).
+- Manual picker already supported all four slots; refill backend was
+  slot-agnostic — UI wiring + a meal-type instruction is what's new,
+  plus a multi-slot regression test (88 total).
+
 ## [0.6.2] — 2026-09-24
 
 ### Fixed

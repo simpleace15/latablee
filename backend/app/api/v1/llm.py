@@ -356,7 +356,9 @@ def _refill_prompt(
         "STRICTLY respect allergies and dislikes. Prefer favorite recipes when sensible, "
         "and keep variety across the week. For each empty slot either pick a recipe from "
         "their book BY EXACT TITLE, or propose a new dish with a COMPLETE recipe JSON. "
-        "New dishes must respect the profile too. Reply as JSON exactly: "
+        "New dishes must respect the profile too. Match the meal type of each slot "
+        "(breakfast slots get breakfast-appropriate meals, lunch gets lighter meals, "
+        "dinner gets hearty mains). Reply as JSON exactly: "
         '{"picks":[{"date":string,"slot":string,"title":string,"why":short string,'
         '"recipe": null | {"title":string,"description":string,"servings":int,'
         '"prep_minutes":int,"cook_minutes":int,"tags":[string],'

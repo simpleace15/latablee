@@ -119,3 +119,15 @@ def test_regenerate_keeps_other_slots(client, admin, llm_ok, chili, h_today):
     lunches = [e for e in plan["entries"] if e["slot"] == "lunch"]
     assert lunches, "user's lunch entry must survive a dinner-only regenerate"
     assert lunches[0].get("recipe_title") == "Leftovers" or lunches[0].get("title_override") == "Leftovers"
+
+
+def test_refill_fills_breakfast_and_lunch_slots(client, admin, llm_ok, chili, h_today):
+    """slots: [breakfast, lunch, dinner] must create entries for every meal type."""
+    res = client.post("/api/v1/llm/refill-week",
+                      json={"days": 1, "slots": ["breakfast", "lunch", "dinner"]},
+                      headers=admin)
+    assert res.status_code == 200, res.text
+    filled = res.json()["filled"]
+    slots_filled = {f["slot"] for f in filled}
+    assert slots_filled == {"breakfast", "lunch", "dinner"}
+    assert len(filled) == 3

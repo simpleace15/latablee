@@ -69,6 +69,7 @@ def _migrate_sqlite_columns(engine) -> None:
     additions: dict[str, list[tuple[str, str]]] = {
         "recipe": [("is_favorite", "INTEGER NOT NULL DEFAULT 0")],
         "household": [("planning_rules", "JSON")],
+        "mealplanentry": [("servings", "INTEGER")],
     }
     with engine.connect() as conn:
         for table, cols in additions.items():

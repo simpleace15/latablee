@@ -112,6 +112,9 @@ class MealPlanEntry(TimestampMixin, SQLModel, table=True):
     notes: str = ""
     # freeform meals don't need a recipe
     title_override: str | None = None
+    # how many people this planned meal is for (None = recipe's default); used to scale
+    # ingredient quantities when generating a shopping list
+    servings: int | None = None
 
 
 class ShoppingList(TimestampMixin, SQLModel, table=True):

@@ -9,6 +9,7 @@ from app.core.security import require_household
 from app.db.engine import get_session
 from app.models import MealPlanEntry, Recipe, ShoppingList, ShoppingListItem, User
 from app.services.events import record_event
+from app.services.unit_conversion import scale_quantity
 
 router = APIRouter()
 
@@ -141,6 +142,14 @@ def remove_item(
     record_event(session, "shopping_list_updated", {"list_id": list_id, "removed": item_id})
 
 
+def _recipe_factor(recipe: Recipe, entry_servings: int | None, default_servings: int | None) -> float:
+    """Scale factor for a recipe: planned servings ÷ recipe servings (clamped 0.05–50)."""
+    target = entry_servings or default_servings
+    if not target or not recipe.servings:
+        return 1.0
+    return max(0.05, min(50.0, target / recipe.servings))
+
+
 @router.post("/{list_id}/generate-from-plan")
 def generate_from_plan(
     list_id: int,
@@ -148,8 +157,13 @@ def generate_from_plan(
     session: Annotated[Session, Depends(get_session)],
     start: str | None = None,
     days: int = 7,
+    default_servings: int | None = None,
 ) -> dict:
-    """Merge ingredients from planned recipes into this list (consolidates duplicates)."""
+    """Merge ingredients from planned recipes into this list (consolidates duplicates).
+
+    Per-meal servings scale the recipe: an entry pinned to 2 people pulls half the
+    quantities of a 4-serving recipe; entries without servings use default_servings
+    when given, else the recipe's own serving count (no scaling)."""
     from datetime import date as date_cls
 
     from app.services.dates import household_today
@@ -167,18 +181,25 @@ def generate_from_plan(
         if e.recipe_id:
             r = session.get(Recipe, e.recipe_id)
             if r and r.household_id == user.household_id:
-                recipes.append(r)
+                recipes.append((r, e))  # carry the entry so per-meal servings can scale
     new_items: list[ItemIn] = []
     household_id = user.household_id
     assert household_id is not None  # require_household guarantees
-    for r in recipes:
+    for r, _e in recipes:
+        factor = _recipe_factor(r, _e.servings, default_servings)
         for ing in r.ingredients or []:
+            q = ing.get("quantity")
+            if q is not None and factor != 1.0:
+                try:
+                    q = scale_quantity(float(q), factor)
+                except (TypeError, ValueError):
+                    q = ing.get("quantity")  # non-numeric (e.g. "to taste") — pass through
             new_items.append(ItemIn(
                 name=ing.get("name", ""),
-                quantity=ing.get("quantity"),
+                quantity=q,
                 unit=ing.get("unit"),
             ))
-    consolidate_items(session, new_items, lst.id, user.household_id, from_recipe_ids=[r.id for r in recipes])
+    consolidate_items(session, new_items, lst.id, user.household_id, from_recipe_ids=[r.id for r, _e in recipes])
     session.commit()
     record_event(session, "shopping_list_updated", {"list_id": lst.id, "generated": True})
     return _list_out(session, lst)
@@ -190,17 +211,28 @@ def add_recipe_to_list(
     recipe_id: int,
     user: Annotated[User, Depends(require_household)],
     session: Annotated[Session, Depends(get_session)],
+    servings: int | None = None,
 ) -> dict:
     """One-click: push every ingredient of one recipe onto this list, consolidated,
-    with per-line attribution to the recipe (shown in the UI)."""
+    with per-line attribution to the recipe (shown in the UI).
+
+    `servings` scales quantities for a different headcount than the recipe default."""
     lst = _list_or_404(list_id, user, session)
     r = session.get(Recipe, recipe_id)
     if r is None or r.household_id != user.household_id:
         raise HTTPException(404, "Recipe not found")
-    items = [
-        ItemIn(name=ing.get("name", ""), quantity=ing.get("quantity"), unit=ing.get("unit"))
-        for ing in (r.ingredients or []) if isinstance(ing, dict)
-    ]
+    factor = _recipe_factor(r, servings, None)
+    items = []
+    for ing in (r.ingredients or []):
+        if not isinstance(ing, dict):
+            continue
+        q = ing.get("quantity")
+        if q is not None and factor != 1.0:
+            try:
+                q = scale_quantity(float(q), factor)
+            except (TypeError, ValueError):
+                q = ing.get("quantity")
+        items.append(ItemIn(name=ing.get("name", ""), quantity=q, unit=ing.get("unit")))
     consolidate_items(session, items, lst.id, user.household_id, from_recipe_ids=[r.id])
     session.commit()
     record_event(session, "shopping_list_updated", {"list_id": lst.id, "added_recipe": r.id})

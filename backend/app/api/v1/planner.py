@@ -22,12 +22,14 @@ class PlanIn(BaseModel):
     recipe_id: int | None = None
     title_override: str | None = None
     notes: str = ""
+    # planned headcount — None means "recipe default"; scales shopping-list quantities
+    servings: int | None = None
 
 
 def _entry_out(e: MealPlanEntry) -> dict:
     return {"id": e.id, "date": e.planned_date.isoformat(), "slot": e.slot,
             "recipe_id": e.recipe_id, "title_override": e.title_override,
-            "notes": e.notes}
+            "notes": e.notes, "servings": e.servings}
 
 
 @router.get("")
@@ -78,6 +80,7 @@ def add_entry(
         slot=payload.slot,
         notes=payload.notes,
         title_override=payload.title_override,
+        servings=payload.servings or None,
     )
     session.add(e)
     session.commit()

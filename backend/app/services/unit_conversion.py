@@ -60,6 +60,26 @@ def can_add(unit_a: str | None, unit_b: str | None) -> bool:
     return convert(1, unit_a, unit_b) is not None
 
 
+def scale_quantity(quantity: float | None, factor: float) -> float | None:
+    """Scale an ingredient quantity by servings-factor; snap ugly floats to sensible ones.
+
+    factor == 1.0 passes through unchanged. Results round to 2 decimals with a nudge toward
+    tidy values (0.25 steps under 10, whole/half steps above, caps at 2dp).
+    """
+    if quantity is None:
+        return None
+    if factor == 1.0:
+        return quantity
+    scaled = quantity * factor
+    if scaled < 10:
+        scaled = round(scaled * 4) / 4  # quarter steps: 0.75 tbsp, 2.5 cups
+    elif scaled < 50:
+        scaled = round(scaled * 2) / 2
+    else:
+        scaled = round(scaled)
+    return round(max(scaled, 0.0), 2)
+
+
 def normalize_ingredient_units(ingredients: list[Any]) -> list[dict[str, Any]]:
     """Normalize each ingredient's unit to canonical form, preserving raw text."""
     out: list[dict[str, Any]] = []

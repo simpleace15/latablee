@@ -40,8 +40,8 @@ function RecipeDetailView() {
     if (!recipe) return;
     setAddingToList(true);
     try {
-      await api.addRecipeToList((await firstListId()) as number, recipe.id as number);
-      setAddedMsg("Added to your list");
+      await api.addRecipeToList((await firstListId()) as number, recipe.id as number, servings || undefined);
+      setAddedMsg(servings && servings !== recipe.servings ? `Added scaled for ${servings}` : "Added to your list");
       setTimeout(() => setAddedMsg(""), 2500);
     } catch {
       setAddedMsg("Couldn't add — no list yet");

@@ -3,6 +3,23 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.7.0] — 2026-09-25
+
+### Added — serving-size scaling (the last nice-to-have)
+- **Plan any meal for any headcount**: the plan picker has "Cooking
+  for" chips (Recipe default / 1 / 2 / 4 / 6 / 8). Entries show
+  "· for 2" on the plan card.
+- **Shopping lists scale**: "Generate from plan" and "Add to list" now
+  scale ingredient quantities by planned servings ÷ recipe servings —
+  plan a 4-serving recipe for 2 and the list pulls half. Recipes opened
+  with the serving stepper scale too (what you see on screen is what
+  lands on the list, and it stacks/consolidates with existing lines).
+  Unquantified ingredients ("to taste") pass through untouched;
+  quantities snap to sensible quarter/half steps instead of 1.2345 tbsp.
+- Migration: adds `mealplanentry.servings` (auto, idempotent).
+- 3 new tests (scale snapping, add-recipe scaling + consolidation,
+  per-entry servings in plan generation) — 91 total.
+
 ## [0.6.3] — 2026-09-24
 
 ### Added — breakfast & lunch planning

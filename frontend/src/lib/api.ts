@@ -100,6 +100,7 @@ export interface PlanEntry {
   recipe_id: number | null;
   title_override: string | null;
   notes: string;
+  servings: number | null;
   recipe_title: string | null;
 }
 
@@ -221,6 +222,7 @@ export const api = {
     slot: string;
     recipe_id?: number | null;
     title_override?: string | null;
+    servings?: number | null;
     notes?: string;
   }) => request<PlanEntry>("/plan", { method: "POST", body: JSON.stringify(payload) }),
   deletePlanEntry: (id: number) => request<void>(`/plan/${id}`, { method: "DELETE" }),
@@ -243,10 +245,16 @@ export const api = {
     }),
   removeListItem: (listId: number, itemId: number) =>
     request<void>(`/lists/${listId}/items/${itemId}`, { method: "DELETE" }),
-  generateFromPlan: (listId: number) =>
-    request<ShoppingList>(`/lists/${listId}/generate-from-plan`, { method: "POST" }),
-  addRecipeToList: (listId: number, recipeId: number) =>
-    request<ShoppingList>(`/lists/${listId}/add-recipe/${recipeId}`, { method: "POST" }),
+  generateFromPlan: (listId: number, defaultServings?: number) =>
+    request<ShoppingList>(
+      `/lists/${listId}/generate-from-plan${defaultServings ? `?default_servings=${defaultServings}` : ""}`,
+      { method: "POST" },
+    ),
+  addRecipeToList: (listId: number, recipeId: number, servings?: number) =>
+    request<ShoppingList>(
+      `/lists/${listId}/add-recipe/${recipeId}${servings ? `?servings=${servings}` : ""}`,
+      { method: "POST" },
+    ),
 
   // import
   importFromUrl: (url: string) =>

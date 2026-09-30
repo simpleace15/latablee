@@ -49,6 +49,7 @@ export default function PlanPage() {
   const [pickSlot, setPickSlot] = useState<Slot>("dinner");
   const [pickRecipeId, setPickRecipeId] = useState<number | null>(null);
   const [pickTitle, setPickTitle] = useState("");
+  const [pickServings, setPickServings] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [pendingDelete, setPendingDelete] = useState<{ id: number; label: string } | null>(null);
@@ -101,10 +102,12 @@ export default function PlanPage() {
         slot: pickSlot,
         recipe_id: pickRecipeId,
         title_override: pickRecipeId ? null : pickTitle.trim(),
+        servings: pickServings,
       });
       setPickerOpen(false);
       setPickRecipeId(null);
       setPickTitle("");
+      setPickServings(null);
       await load(weekStart);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't save");
@@ -312,12 +315,14 @@ export default function PlanPage() {
                       <span className="font-semibold capitalize">{e.slot}</span>
                       {" · "}
                       {e.title_override || e.recipe_title || "Planned"}
+                      {e.servings ? ` · for ${e.servings}` : ""}
                     </Link>
                   ) : (
                     <p className="truncate text-base">
                       <span className="font-semibold capitalize">{e.slot}</span>
                       {" · "}
                       {e.title_override || e.recipe_title || "Planned"}
+                      {e.servings ? ` · for ${e.servings}` : ""}
                     </p>
                   )}
                   <button
@@ -360,6 +365,20 @@ export default function PlanPage() {
                   {SLOTS.map((s) => (
                     <Chip key={s} active={pickSlot === s} onClick={() => setPickSlot(s)}>
                       {SLOT_LABEL[s]}
+                    </Chip>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <span className="mb-2 block text-sm font-semibold">Cooking for</span>
+                <div className="flex flex-wrap gap-2">
+                  {[null, 1, 2, 4, 6, 8].map((n) => (
+                    <Chip
+                      key={String(n)}
+                      active={(pickServings ?? null) === n}
+                      onClick={() => setPickServings(n)}
+                    >
+                      {n === null ? "Recipe default" : `${n} people`}
                     </Chip>
                   ))}
                 </div>

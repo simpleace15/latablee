@@ -87,7 +87,8 @@ def test_generate_from_plan_uses_entry_servings(client: TestClient):
     assert items["pasta"]["quantity"] == 8.0
     assert items["garlic"]["quantity"] == 1.5
     # entry with default servings (None) stays unscaled
-    from datetime import date as _d, timedelta as _td
+    from datetime import date as _d
+    from datetime import timedelta as _td
     tomorrow = (_d.fromisoformat(today) + _td(days=1)).isoformat()
     r = client.post("/api/v1/plan", json={"date": tomorrow, "slot": "dinner",
                                           "recipe_id": rec["id"]}, headers=hdrs)

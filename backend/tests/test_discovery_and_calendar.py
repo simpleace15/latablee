@@ -37,6 +37,14 @@ def test_discover_requires_llm(client, admin, monkeypatch):
 
 
 def test_calendar_ics_roundtrip(client, admin):
+    from datetime import date, timedelta
+
+    # The feed only includes events from today forward; use a future date
+    # so this test can't time-bomb (a hardcoded date ages into the past).
+    planned = date.today() + timedelta(days=7)
+    planned_iso = planned.isoformat()
+    planned_compact = planned.strftime("%Y%m%d")
+
     # plan a meal, mint a device token, fetch the feed
     client.post("/api/v1/recipes", headers=admin, json={
         "title": "Chili", "instructions": ["Brown", "Simmer"],
@@ -44,7 +52,7 @@ def test_calendar_ics_roundtrip(client, admin):
     })
     recipes = client.get("/api/v1/recipes", headers=admin).json()
     r = client.post("/api/v1/plan", headers=admin, json={
-        "date": "2026-10-01", "slot": "dinner", "recipe_id": recipes[0]["id"],
+        "date": planned_iso, "slot": "dinner", "recipe_id": recipes[0]["id"],
     })
     assert r.status_code == 201, r.text
     tok = client.post("/api/v1/tokens", headers=admin, json={"name": "ics-test"}).json()["token"]
@@ -55,7 +63,7 @@ def test_calendar_ics_roundtrip(client, admin):
     assert "BEGIN:VCALENDAR" in body and "END:VCALENDAR" in body
     assert "SUMMARY:Dinner:" in body
     # date line for the planned day
-    assert "DTSTART;VALUE=DATE:20261001" in body
+    assert f"DTSTART;VALUE=DATE:{planned_compact}" in body
 
 
 def test_calendar_ics_bad_token(client, admin):

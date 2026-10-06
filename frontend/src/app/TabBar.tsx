@@ -27,12 +27,22 @@ const tabs = [
 /** Bottom tab bar on mobile; hidden on lg+ (sidebar takes over). 48px+ targets. */
 export function TabBar() {
   const pathname = usePathname();
+  const version = useAppVersion();
   return (
     <nav
       aria-label="Main"
       className="fixed inset-x-0 bottom-0 z-40 border-t bg-card lg:hidden"
       style={{ borderColor: "var(--color-border)" }}
     >
+      {/* Version readout — desktop shows it in the sidebar; mobile gets it here */}
+      {version && (
+        <p
+          className="pt-1 text-center text-[10px]"
+          style={{ color: "var(--color-muted-foreground)" }}
+        >
+          v{version}
+        </p>
+      )}
       <div className="mx-auto flex max-w-xl">
         {tabs.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || (href !== "/" && pathname.startsWith(href));
@@ -41,7 +51,7 @@ export function TabBar() {
               key={href}
               href={href}
               aria-current={active ? "page" : undefined}
-              className="pressable flex flex-1 flex-col items-center gap-1 py-2.5 text-xs"
+              className="pressable flex flex-1 flex-col items-center gap-1 py-2 text-xs"
               style={{
                 color: active ? "var(--color-primary)" : "var(--color-muted-foreground)",
               }}

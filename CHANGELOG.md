@@ -12,7 +12,12 @@ All notable changes to LaTablée are documented here. Format based on
   `planning_rules`, so the Settings page reloaded with the box blank. Now the
   household GET (and the PATCH response) echo rules back, plus a regression
   test. Custom AI instructions were unaffected — verified stored in the DB,
-  returned to the UI, and sent as the system message on every AI call.
+  returned to the UI, and sent as a system message on every AI call.
+
+### Fixed — version visible on mobile
+- The `v0.7.1` readout lived only in the desktop sidebar; the mobile bottom
+  tab bar now shows it too (10px micro-line above the tabs, tap targets
+  unchanged)
 
 ## [0.7.0] — 2026-09-25
 

@@ -3,6 +3,17 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.7.1] — 2026-10-06
+
+### Fixed — planning rules no longer vanish from Settings
+- **The bug**: saved Planning rules (Settings → Food preferences) disappeared
+  from the textarea on every page revisit — they were saved and the planner
+  really did follow them, but `GET /api/v1/household` never returned
+  `planning_rules`, so the Settings page reloaded with the box blank. Now the
+  household GET (and the PATCH response) echo rules back, plus a regression
+  test. Custom AI instructions were unaffected — verified stored in the DB,
+  returned to the UI, and sent as the system message on every AI call.
+
 ## [0.7.0] — 2026-09-25
 
 ### Added — serving-size scaling (the last nice-to-have)

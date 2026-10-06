@@ -62,6 +62,7 @@ def get_household(
     return {"id": h.id, "name": h.name, "timezone": h.timezone,
             "dietary_preferences": h.dietary_preferences, "allergies": h.allergies,
             "dislikes": h.dislikes, "favorites": h.favorites,
+            "planning_rules": h.planning_rules or [],
             "things_to_remember": h.things_to_remember}
 
 
@@ -87,4 +88,5 @@ def update_household(
     session.add(h)
     session.commit()
     session.refresh(h)
-    return {"id": h.id, "name": h.name, "timezone": h.timezone}
+    return {"id": h.id, "name": h.name, "timezone": h.timezone,
+            "planning_rules": h.planning_rules or []}

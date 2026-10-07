@@ -33,7 +33,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await getToken();
   const headers = new Headers(init?.headers);
   if (token) headers.set("Authorization", `Bearer ${token}`);
-  if (init?.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  // FormData bodies must NOT get a manual Content-Type: the browser needs to add
+  // its own multipart boundary. Pre-setting application/json kills the boundary →
+  // FastAPI 422 "Field required" (surfaced as the generic "Request failed").
+  const isFormData = typeof FormData !== "undefined" && init?.body instanceof FormData;
+  if (init?.body && !isFormData && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   const res = await fetch(`${API}${path}`, { ...init, headers });
   if (res.status === 204) return undefined as T;
   const text = await res.text();

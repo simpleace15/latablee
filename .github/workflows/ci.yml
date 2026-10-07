@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_call:  # reusable: publish.yml calls this as its gate before pushing to GHCR
 
 jobs:
   backend:

@@ -6,10 +6,12 @@ All notable changes to LaTablée are documented here. Format based on
 ## [0.7.2] — 2026-10-06
 
 ### Fixed
-- **Plan page week grid (desktop)**: the week stacked as 7 vertical day-rows
-  on every screen since 0.6.2; desktop now shows the calendar view — 7
-  day-columns side by side (compact "Mon 6" headers, meal labels above each
-  cell), stacking vertically on phones under 768px.
+- **Plan page — new desktop layout**: the week now renders as a meal-planner
+  matrix on desktop (days as full-width rows, Breakfast/Lunch/Dinner/Other
+  as column headers). Meal titles get the whole row width instead of a
+  seventh of it, so nothing is truncated to unreadability; today's row is
+  highlighted and every empty cell is a one-tap add button for that
+  day + meal. Phones keep the stacked day cards from 0.6.2.
 
 ### Added
 - **Browser-tab icons**: Next.js icon conventions (`app/icon.png` +

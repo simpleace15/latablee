@@ -283,19 +283,12 @@ export default function PlanPage() {
 
       {error && <p className="mb-3 text-sm font-semibold" style={{ color: "var(--color-destructive)" }}>{error}</p>}
 
-      {/* Desktop: 7 day-columns side by side (the calendar view); phone: stacked days */}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-7 md:items-start">
+      {/* Mobile (<lg): stacked day cards, one per row */}
+      <div className="grid grid-cols-1 gap-3 lg:hidden">
         {days.map(({ iso, entries: dayEntries }) => (
-          <Card key={iso} className="flex flex-col p-3 md:p-2.5">
+          <Card key={iso} className="p-3">
             <div className="mb-2 flex items-center justify-between gap-1">
-              <p className="font-heading text-base md:text-sm">
-                <span className="md:hidden lg:inline">{fmtDay(iso)}</span>
-                <span className="hidden md:inline lg:hidden" aria-hidden="true">
-                  {new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "short" })}
-                  {" "}
-                  {new Date(iso + "T12:00:00").getDate()}
-                </span>
-              </p>
+              <p className="font-heading text-base">{fmtDay(iso)}</p>
               <button
                 className="pressable text-sm font-semibold"
                 style={{ color: "var(--color-primary)" }}
@@ -348,6 +341,90 @@ export default function PlanPage() {
             </div>
           </Card>
         ))}
+      </div>
+
+      {/* Desktop (lg+): week matrix — days as rows, meals as columns.
+          Full-width rows keep meal titles readable (7 side-by-side day-columns
+          starved the text). Empty cells are add buttons for that day+slot. */}
+      <div className="hidden lg:block">
+        <div className="grid gap-1.5" style={{ gridTemplateColumns: "84px repeat(4, minmax(0, 1fr))" }}>
+          <div aria-hidden="true" />
+          {SLOTS.map((s) => (
+            <div key={s} className="pb-1 text-center text-xs font-bold uppercase tracking-wide" style={{ color: "var(--color-muted-foreground)" }}>
+              {SLOT_LABEL[s]}
+            </div>
+          ))}
+          {days.map(({ iso, entries: dayEntries }) => {
+            const d = new Date(iso + "T12:00:00");
+            const isToday = iso === todayISO();
+            return (
+              <div key={iso} className="contents">
+                <button
+                  className="pressable flex flex-col items-start justify-center rounded-[12px] px-2 py-2 text-left"
+                  style={{
+                    background: isToday ? "var(--color-muted)" : "transparent",
+                    color: isToday ? "var(--color-primary)" : "var(--color-foreground)",
+                  }}
+                  onClick={() => { setPickDate(iso); setPickerOpen(true); }}
+                  aria-label={`Add a meal on ${iso}`}
+                >
+                  <span className="font-heading text-sm font-bold">{d.toLocaleDateString(undefined, { weekday: "short" })}</span>
+                  <span className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+                    {d.toLocaleDateString(undefined, { month: "short" })} {d.getDate()}
+                  </span>
+                </button>
+                {SLOTS.map((slot) => {
+                  const slotEntries = dayEntries.filter((e) => e.slot === slot);
+                  if (slotEntries.length === 0) {
+                    return (
+                      <button
+                        key={slot}
+                        className="pressable flex min-h-[44px] items-center justify-center rounded-[12px] border border-dashed text-lg"
+                        style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)", opacity: 0.6 }}
+                        onClick={() => { setPickDate(iso); setPickSlot(slot); setPickerOpen(true); }}
+                        aria-label={`Add ${SLOT_LABEL[slot]} on ${iso}`}
+                      >
+                        +
+                      </button>
+                    );
+                  }
+                  return (
+                    <div key={slot} className="flex flex-col gap-1">
+                      {slotEntries.map((e) => (
+                        <div key={e.id} className="flex min-h-[44px] items-center justify-between gap-1.5 rounded-[12px] px-2.5 py-2" style={{ background: "var(--color-muted)" }}>
+                          {e.recipe_id ? (
+                            <Link
+                              href={`/recipes/view/?id=${e.recipe_id}`}
+                              className="pressable line-clamp-2 text-sm leading-snug"
+                              title={[e.title_override || e.recipe_title || "Planned", e.servings ? `for ${e.servings}` : null].filter(Boolean).join(" — for ")}
+                              aria-label={`Open recipe ${e.title_override || e.recipe_title}`}
+                            >
+                              {e.title_override || e.recipe_title || "Planned"}
+                              {e.servings ? ` · ${e.servings}` : ""}
+                            </Link>
+                          ) : (
+                            <p className="line-clamp-2 text-sm leading-snug" title={e.title_override || e.recipe_title || "Planned"}>
+                              {e.title_override || e.recipe_title || "Planned"}
+                              {e.servings ? ` · ${e.servings}` : ""}
+                            </p>
+                          )}
+                          <button
+                            className="pressable shrink-0 rounded-full p-1.5"
+                            style={{ color: "var(--color-muted-foreground)" }}
+                            onClick={() => setPendingDelete({ id: e.id, label: `${SLOT_LABEL[e.slot as Slot] || e.slot} — ${e.title_override || e.recipe_title || "Planned"}` })}
+                            aria-label={`Remove ${e.slot} on ${iso}`}
+                          >
+                            <Trash2 size={15} aria-hidden />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {pickerOpen && (

@@ -42,7 +42,12 @@ def _parse_zip(data: bytes) -> dict:
     skipped = 0
     format_ = "unknown"
 
-    # 1) current Mealie: database.json at root with {"recipes": [...]}
+    # 0) our own backup (Settings → Download backup): latablee.db + images/ + export.json.
+    #    Import the recipes additively (no wipe — that's the Restore card's explicit job).
+    export_name = next((n for n in names if PurePosixPath(n).name == "export.json"), None)
+    has_latablee_db = any(PurePosixPath(n).name.endswith(".db") for n in names)
+    if export_name is not None and has_latablee_db:
+        return _parse_latablee_backup(zf, export_name)
     db_name = next((n for n in names if n == "database.json" or n.endswith("/database.json")), None)
     per_recipe_files = [n for n in names if _recipe_json_path(n)]
 
@@ -87,6 +92,59 @@ def _parse_zip(data: bytes) -> dict:
     if len(recipes) > MAX_ENTRIES:
         recipes = recipes[:MAX_ENTRIES]
     return {"recipes": recipes, "images": images, "skipped": skipped, "format": format_}
+
+
+def _parse_latablee_backup(zf: zipfile.ZipFile, export_name: str) -> dict:
+    """A LaTablée 'Download backup' zip (latablee.db + images/ + export.json).
+    Recipes come from export.json (household-scoped export shape); images from
+    images/ keyed by the recipe's stored image path. Additive import —
+    duplicates (same title already in the book) are skipped by the caller
+    naturally via unique constraint on nothing; we dedupe by title here."""
+    import os as _os
+
+    payload = json.loads(zf.read(export_name).decode("utf-8", "replace"))
+    raw_recipes = payload.get("recipes", []) if isinstance(payload, dict) else []
+
+    # title → image bytes from images/<fname> (recipe.image_path points there)
+    zip_images: dict[str, bytes] = {}
+    for n in zf.namelist():
+        p = PurePosixPath(n)
+        if p.parts and p.parts[0] == "images" and p.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
+            zip_images[p.name] = zf.read(n)
+
+    recipes: list[dict] = []
+    images: dict[str, bytes] = {}
+    skipped = 0
+    seen_titles: set[str] = set()
+    for item in raw_recipes[:MAX_ENTRIES]:
+        title = (item.get("title") or "").strip()
+        if not title or title.casefold() in seen_titles:
+            skipped += 1
+            continue
+        seen_titles.add(title.casefold())
+        # export.json rows ARE latablee shape already (title/ingredients/…);
+        # _schema_recipe_to_latablee would return None (expects "name") — map directly.
+        recipes.append({
+            "title": title,
+            "description": item.get("description") or "",
+            "servings": item.get("servings") or 4,
+            "prep_minutes": item.get("prep_minutes"),
+            "cook_minutes": item.get("cook_minutes"),
+            "instructions": [str(x) for x in (item.get("instructions") or [])],
+            "ingredients": item.get("ingredients") or [],
+            "tags": item.get("tags") or [],
+            "source_url": item.get("source_url"),
+            "source_name": item.get("source_name"),
+        })
+        img_path = item.get("image_path") or ""
+        if img_path:
+            fname = _os.path.basename(str(img_path))
+            if fname in zip_images:
+                images[title] = zip_images[fname]
+    if not recipes:
+        raise ValueError("Backup contains no recipes (export.json empty?)")
+    return {"recipes": recipes, "images": images, "skipped": skipped,
+            "format": "latablee-backup"}
 
 
 def _recipe_json_path(name: str) -> bool:

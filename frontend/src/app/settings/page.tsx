@@ -28,6 +28,7 @@ export default function SettingsPage() {
   const [migBusy, setMigBusy] = useState(false);
   const [migMsg, setMigMsg] = useState("");
   const restoreInputRef = useRef<HTMLInputElement | null>(null);
+  const migInputRef = useRef<HTMLInputElement | null>(null);
 
   // llm settings
   const [prefsDraft, setPrefsDraft] = useState<{ allergies: string; dislikes: string }>({ allergies: "", dislikes: "" });
@@ -393,21 +394,31 @@ export default function SettingsPage() {
             <h2 className="font-heading text-lg">Import from Mealie or other apps</h2>
           </div>
           <p className="mb-3 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
-            Bring your existing collection: upload a Mealie backup zip (Settings → Backups →
-            Create Backup in Mealie), a zip of recipe JSON files, or a single recipe JSON.
-            Recipes, photos, tags, and source links all come across. Nothing is saved until
-            you confirm the preview.
+            Bring your existing collection: a LaTablée backup zip (move between installs),
+            a Mealie backup zip, a zip of recipe JSON files, or a single recipe JSON.
+            Recipes, photos, tags, and source links all come across. Nothing is saved
+            until you confirm the preview.
           </p>
+          <input
+            ref={(el) => { migInputRef.current = el; }}
+            type="file" accept=".zip,.json" className="hidden"
+            onChange={(e) => { setMigFile(e.target.files?.[0] ?? null); setMigPreview(null); setMigMsg(""); }}
+          />
           <div className="flex flex-wrap items-center gap-2">
-            <input
-              type="file" accept=".zip,.json"
-              onChange={(e) => { setMigFile(e.target.files?.[0] ?? null); setMigPreview(null); setMigMsg(""); }}
-              className="text-sm"
-              style={{ color: "var(--color-foreground)" }}
-            />
+            <Button variant="ghost" onClick={() => migInputRef.current?.click()} disabled={migBusy}>
+              <PackageOpen size={16} aria-hidden style={{ color: "var(--color-foreground)" }} /> {migFile ? migFile.name : "Browse files…"}
+            </Button>
             <Button onClick={migPreviewRun} disabled={!migFile || migBusy}>
               {migBusy ? "Reading…" : "Preview"}
             </Button>
+            {migFile && !migBusy && (
+              <button
+                onClick={() => { setMigFile(null); setMigPreview(null); setMigMsg(""); if (migInputRef.current) migInputRef.current.value = ""; }}
+                className="text-sm" style={{ color: "var(--color-muted-foreground)" }}
+              >
+                Clear
+              </button>
+            )}
           </div>
           {migPreview && (
             <div className="mt-3 flex flex-wrap items-center gap-3 rounded-[12px] px-3 py-2.5 text-sm" style={{ background: "var(--color-muted)" }}>

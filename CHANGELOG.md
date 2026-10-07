@@ -5,6 +5,17 @@ All notable changes to LaTablée are documented here. Format based on
 
 ## [0.7.4] — 2026-10-07
 
+### Fixed — backup round-trip & migration card
+- **LaTablée backups now import**: the "Import from Mealie or other apps"
+  card accepted only Mealie/JSON formats — uploading your own backup zip
+  (e.g. moving prod → a new install) failed with 422 "No recipes found".
+  The parser now detects our own format (`.db` + `export.json`) and imports
+  recipes + photos additively, deduped by title. Verified end-to-end against
+  a real backup zip. 4 tests.
+- **Migration card UI**: the raw native file input (ugly "Browse" Chrome
+  default) is replaced with the styled Browse button + chosen-file display
+  + Clear action, matching the Restore card.
+
 ### Added — updates, backups, and findability
 - **Update available banner (Admin Settings)**: `GET /api/v1/admin/version-check`
   compares the running version against the latest GitHub release/tag (result

@@ -395,18 +395,30 @@ export default function PlanPage() {
                           {e.recipe_id ? (
                             <Link
                               href={`/recipes/view/?id=${e.recipe_id}`}
-                              className="pressable line-clamp-2 text-sm leading-snug"
-                              title={[e.title_override || e.recipe_title || "Planned", e.servings ? `for ${e.servings}` : null].filter(Boolean).join(" — for ")}
+                              className="pressable flex flex-1 flex-col items-start leading-tight"
+                              title={`Open recipe ${e.title_override || e.recipe_title || "Planned"}`}
                               aria-label={`Open recipe ${e.title_override || e.recipe_title}`}
                             >
-                              {e.title_override || e.recipe_title || "Planned"}
-                              {e.servings ? ` · ${e.servings}` : ""}
+                              {(e.title_override || e.recipe_title || "Planned").split(/\s+/).map((w, wi) => (
+                                <span key={wi} className="text-sm">
+                                  {w}
+                                </span>
+                              ))}
+                              {e.servings ? (
+                                <span className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>for {e.servings}</span>
+                              ) : null}
                             </Link>
                           ) : (
-                            <p className="line-clamp-2 text-sm leading-snug" title={e.title_override || e.recipe_title || "Planned"}>
-                              {e.title_override || e.recipe_title || "Planned"}
-                              {e.servings ? ` · ${e.servings}` : ""}
-                            </p>
+                            <span className="flex flex-1 flex-col items-start leading-tight" title={e.title_override || e.recipe_title || "Planned"}>
+                              {(e.title_override || e.recipe_title || "Planned").split(/\s+/).map((w, wi) => (
+                                <span key={wi} className="text-sm">
+                                  {w}
+                                </span>
+                              ))}
+                              {e.servings ? (
+                                <span className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>for {e.servings}</span>
+                              ) : null}
+                            </span>
                           )}
                           <button
                             className="pressable shrink-0 rounded-full p-1.5"

@@ -283,16 +283,24 @@ export default function PlanPage() {
 
       {error && <p className="mb-3 text-sm font-semibold" style={{ color: "var(--color-destructive)" }}>{error}</p>}
 
-      {/* stacked on every breakpoint — 7 side-by-side columns are too cramped on desktop */}
-      <div className="grid grid-cols-1 gap-3">
+      {/* Desktop: 7 day-columns side by side (the calendar view); phone: stacked days */}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-7 md:items-start">
         {days.map(({ iso, entries: dayEntries }) => (
-          <Card key={iso} className="p-4">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="font-heading text-lg">{fmtDay(iso)}</p>
+          <Card key={iso} className="flex flex-col p-3 md:p-2.5">
+            <div className="mb-2 flex items-center justify-between gap-1">
+              <p className="font-heading text-base md:text-sm">
+                <span className="md:hidden lg:inline">{fmtDay(iso)}</span>
+                <span className="hidden md:inline lg:hidden" aria-hidden="true">
+                  {new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "short" })}
+                  {" "}
+                  {new Date(iso + "T12:00:00").getDate()}
+                </span>
+              </p>
               <button
                 className="pressable text-sm font-semibold"
                 style={{ color: "var(--color-primary)" }}
                 onClick={() => { setPickDate(iso); setPickerOpen(true); }}
+                aria-label={`Add a meal on ${iso}`}
               >
                 + add
               </button>
@@ -301,32 +309,30 @@ export default function PlanPage() {
               {SLOTS.map((slot) => {
                 const slotEntries = dayEntries.filter((e) => e.slot === slot);
                 return (
-                  <div key={slot} className="flex items-start justify-between gap-3">
-                    <div className="flex flex-col gap-2" style={{ minWidth: 0, flex: 1 }}>
-                      {slotEntries.length === 0 ? (
-                        <p className="rounded-[12px] px-3 py-2 text-sm" style={{ color: "var(--color-muted-foreground)", background: "var(--color-muted)", opacity: 0.55 }}>
-                          No {SLOT_LABEL[slot].toLowerCase()} planned
-                        </p>
-                      ) : (
-                        slotEntries.map((e) => (
-                    <div key={e.id} className="flex items-center justify-between gap-3 rounded-[12px] px-3 py-2" style={{ background: "var(--color-muted)" }}>
+                  <div key={slot} className="flex flex-col gap-1">
+                    <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--color-muted-foreground)" }}>
+                      {SLOT_LABEL[slot]}
+                    </p>
+                    {slotEntries.length === 0 ? (
+                      <p className="rounded-[12px] px-2.5 py-2 text-xs" style={{ color: "var(--color-muted-foreground)", background: "var(--color-muted)", opacity: 0.55 }}>
+                        —
+                      </p>
+                    ) : (
+                      slotEntries.map((e) => (
+                    <div key={e.id} className="flex items-center justify-between gap-2 rounded-[12px] px-2.5 py-2" style={{ background: "var(--color-muted)" }}>
                   {e.recipe_id ? (
-                    <Link href={`/recipes/view/?id=${e.recipe_id}`} className="pressable truncate text-base" aria-label={`Open recipe ${e.title_override || e.recipe_title}`}>
-                      <span className="font-semibold capitalize">{e.slot}</span>
-                      {" · "}
+                    <Link href={`/recipes/view/?id=${e.recipe_id}`} className="pressable truncate text-sm" aria-label={`Open recipe ${e.title_override || e.recipe_title}`}>
                       {e.title_override || e.recipe_title || "Planned"}
-                      {e.servings ? ` · for ${e.servings}` : ""}
+                      {e.servings ? ` · ${e.servings}` : ""}
                     </Link>
                   ) : (
-                    <p className="truncate text-base">
-                      <span className="font-semibold capitalize">{e.slot}</span>
-                      {" · "}
+                    <p className="truncate text-sm">
                       {e.title_override || e.recipe_title || "Planned"}
-                      {e.servings ? ` · for ${e.servings}` : ""}
+                      {e.servings ? ` · ${e.servings}` : ""}
                     </p>
                   )}
                   <button
-                    className="pressable rounded-full p-2"
+                    className="pressable rounded-full p-1.5"
                     style={{ color: "var(--color-muted-foreground)" }}
                     onClick={() => setPendingDelete({ id: e.id, label: `${SLOT_LABEL[e.slot as Slot] || e.slot} — ${e.title_override || e.recipe_title || "Planned"}` })}
                     aria-label={`Remove ${e.slot} on ${iso}`}
@@ -334,17 +340,8 @@ export default function PlanPage() {
                     <Trash2 size={16} aria-hidden />
                   </button>
                 </div>
-                        ))
-                      )}
-                    </div>
-                    <button
-                      className="pressable mt-1 rounded-full p-2"
-                      style={{ color: "var(--color-primary)" }}
-                      onClick={() => { setPickDate(iso); setPickSlot(slot); setPickerOpen(true); }}
-                      aria-label={`Add ${SLOT_LABEL[slot]} on ${iso}`}
-                    >
-                      <Plus size={16} aria-hidden />
-                    </button>
+                      ))
+                    )}
                   </div>
                 );
               })}

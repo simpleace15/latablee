@@ -3,6 +3,19 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.7.2] — 2026-10-06
+
+### Fixed
+- **Plan page week grid (desktop)**: the week stacked as 7 vertical day-rows
+  on every screen since 0.6.2; desktop now shows the calendar view — 7
+  day-columns side by side (compact "Mon 6" headers, meal labels above each
+  cell), stacking vertically on phones under 768px.
+
+### Added
+- **Browser-tab icons**: Next.js icon conventions (`app/icon.png` +
+  `app/favicon.ico`, generated from the PWA icon) — the browser tab now
+  shows the LaTablée mark instead of a blank/default favicon.
+
 ## [0.7.1] — 2026-10-06
 
 ### Fixed — planning rules no longer vanish from Settings

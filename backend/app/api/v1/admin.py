@@ -23,10 +23,11 @@ class VersionCheckOut(BaseModel):
 
 
 def _fetch_latest_github_version() -> str | None:
-    """Latest published version from GitHub releases/tags; None if unreachable.
-    Falls back to package version comparisons only — never scrapes HTML.
-    (URLs are module constants, https-only — S310 audited here.)"""
+    """Latest published version: GitHub releases → tags → pyproject on main.
+    None only when everything is unreachable (offline instances never nag).
+    (URLs are module constants, https-only — S310 audited by noqa.)"""
     import json
+    import logging
     import urllib.request
 
     for url in (
@@ -34,19 +35,30 @@ def _fetch_latest_github_version() -> str | None:
         "https://api.github.com/repos/simpleace15/latablee/tags",
     ):
         try:
-            # noqa needed on the Request line too — ruff flags the taint source
-            req = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json"})  # noqa: S310
-            with urllib.request.urlopen(req, timeout=8) as resp:  # noqa: S310 — https literals above
+            req = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json"})  # noqa: S310 — https literal
+            with urllib.request.urlopen(req, timeout=8) as resp:  # noqa: S310 — https literal
                 data = json.loads(resp.read())
             if isinstance(data, dict) and data.get("tag_name"):
                 return str(data["tag_name"]).removeprefix("v")
             if isinstance(data, list) and data:
                 return str(data[0].get("name", "")).removeprefix("v") or None
-        except (OSError, ValueError) as exc:  # network/JSON — log & fall through
-            import logging
-
+            # reachable but empty (no releases/tags yet) → try the next source
+        except (OSError, ValueError) as exc:
             logging.getLogger(__name__).debug("version check %s failed: %s", url, exc)
             continue
+    # Repo publishes pyproject version bumps (no tags yet) → read the default
+    # branch's pyproject — exactly what the CI image is built from.
+    raw_url = "https://raw.githubusercontent.com/simpleace15/latablee/main/pyproject.toml"
+    try:
+        req = urllib.request.Request(raw_url)  # noqa: S310 — https literal
+        with urllib.request.urlopen(req, timeout=8) as resp:  # noqa: S310 — https literal
+            body = resp.read().decode("utf-8", "replace")
+        for line in body.splitlines():
+            if line.strip().startswith("version"):
+                _, _, value = line.partition("=")
+                return value.strip().strip('"').removeprefix("v") or None
+    except (OSError, ValueError) as exc:
+        logging.getLogger(__name__).debug("version check %s failed: %s", raw_url, exc)
     return None
 
 

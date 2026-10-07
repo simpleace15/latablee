@@ -75,6 +75,7 @@ def list_recipes(
     q: str = "",
     tag: str = "",
     favorite: str = "",  # "1" → only favorites
+    ingredients: str = "",  # comma-separated: recipes containing ALL (substring, case-insensitive)
     limit: int = 100,
     offset: int = 0,
 ) -> list[dict]:
@@ -87,6 +88,13 @@ def list_recipes(
         recipes = [r for r in recipes if tag in (r.tags or [])]
     if favorite == "1":
         recipes = [r for r in recipes if r.is_favorite]
+    if ingredients:
+        wanted = [i.strip().lower() for i in ingredients.split(",") if i.strip()]
+        recipes = [
+            r for r in recipes
+            if all(any(w in (ing.get("name", "").lower()) for ing in (r.ingredients or []))
+                   for w in wanted)
+        ]
     return [_recipe_out(r) for r in recipes[offset:offset + limit]]
 
 

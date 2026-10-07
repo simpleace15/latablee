@@ -3,10 +3,13 @@
 services:
   latablee:
     build: .
-    image: latablee
+    # Default: source-built local image. Opt into the CI-published GHCR image by
+    # setting LATABLEE_IMAGE=ghcr.io/simpleace15/latablee:latest in .env — then
+    # Unraid's "update stack" (docker compose pull) fetches real releases.
+    image: ${LATABLEE_IMAGE:-latablee}
     # Source-built image (no Docker Hub repo) — never pull, always build.
     # Without this, "update stack" / `docker compose pull` errors on the missing Hub image.
-    pull_policy: build
+    pull_policy: ${LATABLEE_PULL_POLICY:-build}
     environment:
       - LATABLEE_SECRET_KEY=${LATABLEE_SECRET_KEY:?set LATABLEE_SECRET_KEY in .env}
       - LATABLEE_DATABASE_URL=${LATABLEE_DATABASE_URL:-sqlite:///./data/latablee.db}

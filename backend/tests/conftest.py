@@ -16,6 +16,17 @@ from app.main import app  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def _clean_login_guard():
+    """Rate-limit state is process-global — clear around every test so a
+    lockout from one test can't 429 the next (order-dependent flake)."""
+    from app.services import login_guard
+
+    login_guard.reset_for_tests()
+    yield
+    login_guard.reset_for_tests()
+
+
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     """Fresh DB per test via temp file, TestClient with admin auth headers."""

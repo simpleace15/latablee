@@ -192,8 +192,8 @@ export const api = {
     ),
 
   // recipes
-  recipes: (q = "", tag = "") =>
-    request<Recipe[]>(`/recipes?q=${encodeURIComponent(q)}&tag=${encodeURIComponent(tag)}`),
+  recipes: (q = "", tag = "", ingredients = "") =>
+    request<Recipe[]>(`/recipes?q=${encodeURIComponent(q)}&tag=${encodeURIComponent(tag)}&ingredients=${encodeURIComponent(ingredients)}`),
   recipe: (id: number) => request<Recipe>(`/recipes/${id}`),
   createRecipe: (r: Partial<Recipe>) =>
     request<Recipe>("/recipes", { method: "POST", body: JSON.stringify(r) }),
@@ -278,6 +278,9 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ timeout_seconds }),
     }),
+  versionCheck: () =>
+    request<{ current: string; latest: string | null; update_available: boolean;
+      checked: boolean; error?: string }>("/admin/version-check"),
   importFromUrls: (urls: string) =>
     request<{
       results: { url: string; ok: boolean; parsed?: Partial<Recipe>; error?: string }[];

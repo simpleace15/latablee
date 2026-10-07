@@ -33,6 +33,7 @@ export default function SettingsPage() {
   const [prefsDraft, setPrefsDraft] = useState<{ allergies: string; dislikes: string }>({ allergies: "", dislikes: "" });
   const [rulesDraft, setRulesDraft] = useState("");
   const [autoAddList, setAutoAddList] = useState(true);
+  const [updateInfo, setUpdateInfo] = useState<{ current: string; latest: string | null; update_available: boolean; checked: boolean; error?: string } | null>(null);
   const [tokens, setTokens] = useState<{ id: number; name: string; created_at: string; last_used_at: string | null; revoked: boolean }[]>([]);
   const [newTokenName, setNewTokenName] = useState("");
   const [newTokenRaw, setNewTokenRaw] = useState("");
@@ -78,6 +79,8 @@ export default function SettingsPage() {
             } catch { /* non-admin or older backend */ }
             setLlm((prev) => ({ ...prev, base_url: s.base_url, model: s.model, vision_model: s.vision_model, system_prompt: s.system_prompt ?? "" }));
             setLlmKeySet(s.api_key_set);
+            // update check — never blocks the page; a quiet banner when a newer release exists
+            api.versionCheck().then((v) => setUpdateInfo(v)).catch(() => {});
           } catch {
             /* not admin or not configured yet */
           }
@@ -276,6 +279,26 @@ export default function SettingsPage() {
   return (
     <AppLayout>
       <h1 className="mb-4 text-2xl">Settings</h1>
+
+      {/* Update available — quiet banner, admin only */}
+      {user?.role === "admin" && updateInfo?.update_available && (
+        <Card className="mb-4 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-semibold">
+              Update available — <span style={{ color: "var(--color-primary)" }}>v{updateInfo.latest}</span>{" "}
+              is up (you're on v{updateInfo.current}). Update from your Unraid deploy.
+            </p>
+            <a
+              href="https://github.com/simpleace15/latablee/blob/main/CHANGELOG.md"
+              target="_blank" rel="noreferrer"
+              className="text-sm underline"
+              style={{ color: "var(--color-primary)" }}
+            >
+              What changed
+            </a>
+          </div>
+        </Card>
+      )}
 
       {/* Household */}
       <Card className="mb-4 p-5">

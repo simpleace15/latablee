@@ -12,6 +12,7 @@ export default function RecipesPage() {
   const [loading, setLoading] = useState(true);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [q, setQ] = useState("");
+  const [haveList, setHaveList] = useState("");  // "chicken, rice" — recipes with ALL of these
   const [activeTag, setActiveTag] = useState("");
   const [favOnly, setFavOnly] = useState(false);
   const [error, setError] = useState("");
@@ -20,10 +21,10 @@ export default function RecipesPage() {
   const ideaElapsed = useElapsedTimer(ideaBusy);
   const [savingId, setSavingId] = useState("");
 
-  const load = useCallback(async (query: string, tag: string) => {
+  const load = useCallback(async (query: string, tag: string, ing: string) => {
     setLoading(true);
     try {
-      const res = await api.recipes(query, tag);
+      const res = await api.recipes(query, tag, ing);
       setRecipes(res);
       setError("");
     } catch (err) {
@@ -34,7 +35,7 @@ export default function RecipesPage() {
   }, []);
 
   useEffect(() => {
-    void load("", "");
+    void load("", "", "");
   }, [load]);
 
   async function toggleFav(e: React.MouseEvent, id: number, next: boolean) {
@@ -68,7 +69,7 @@ export default function RecipesPage() {
     try {
       await api.saveProposal({ recipe: idea });
       setIdeas((cur) => cur.filter((_, idx) => idx !== i));
-      void load(q, activeTag); // the book grew — refresh
+      void load(q, activeTag, haveList); // the book grew — refresh
     } catch {
       /* keep card; surfaced by state reset */
     } finally {
@@ -134,7 +135,7 @@ export default function RecipesPage() {
             value={q}
             onChange={(e) => {
               setQ(e.target.value);
-              void load(e.target.value, activeTag);
+              void load(e.target.value, activeTag, haveList);
             }}
             placeholder="Search recipes, ingredients, tags…"
             className="w-full bg-transparent py-2.5 outline-none"
@@ -145,9 +146,26 @@ export default function RecipesPage() {
       </div>
 
       <div className="mb-3 flex flex-wrap gap-2">
-        <Chip active={favOnly} onClick={() => { const n = !favOnly; setFavOnly(n); void load(q, activeTag && "") }}>
+        <Chip active={favOnly} onClick={() => { const n = !favOnly; setFavOnly(n); void load(q, activeTag, haveList) }}>
           <Heart size={14} aria-hidden className="inline" /> Favorites
         </Chip>
+      </div>
+
+      {/* Cook with what you have: recipes containing ALL listed ingredients */}
+      <div className="mb-3 flex items-center gap-2 rounded-[var(--radius-control)] border px-3"
+           style={{ borderColor: "var(--color-border)", background: "var(--color-card)" }}>
+        <ChefHat size={16} aria-hidden style={{ color: "var(--color-muted-foreground)" }} />
+        <input
+          value={haveList}
+          onChange={(e) => {
+            setHaveList(e.target.value);
+            void load(q, activeTag, e.target.value);
+          }}
+          placeholder="Have ingredients: chicken, rice — finds recipes with all of them"
+          className="w-full bg-transparent py-2.5 outline-none"
+          style={{ color: "var(--color-foreground)" }}
+          aria-label="Filter recipes by ingredients you have (comma-separated, all required)"
+        />
       </div>
 
       {allTags.length > 0 && (
@@ -159,7 +177,7 @@ export default function RecipesPage() {
               onClick={() => {
                 const next = activeTag === t ? "" : t;
                 setActiveTag(next);
-                void load(q, next);
+                void load(q, next, haveList);
               }}
             >
               {t}

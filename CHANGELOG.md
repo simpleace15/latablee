@@ -3,6 +3,39 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.7.4] — 2026-10-07
+
+### Added — updates, backups, and findability
+- **Update available banner (Admin Settings)**: `GET /api/v1/admin/version-check`
+  compares the running version against the latest GitHub release/tag (result
+  cached 6h, offline-safe — it never nags when it can't verify). Banner shows
+  the new release number and links to the CHANGELOG.
+- **One-command updates on Unraid**: `scripts/update.sh` (git-clone route) —
+  pull → build → swap → health-verify in a single step; plus a CI workflow
+  that publishes the image to GHCR on every push, so the Compose Manager
+  "Update Stack" can pull `ghcr.io/simpleace15/latablee:latest` directly
+  (opt in via `LATABLEE_IMAGE` in `.env`). UNRAID.md documents both routes.
+- **Scheduled backups**: `GET /api/export/archive/cron?token=<device-token>`
+  serves the full backup zip (DB + images) for cron/User Scripts jobs —
+  device-token authed, query-param friendly, revocation-aware. UNRAID.md has
+  a ready-to-paste nightly User Scripts job with 14-backup retention.
+- **"Cook with what you have" (Recipes)**: new ingredient filter — type
+  "chicken, rice" and the book narrows to recipes containing all of them
+  (substring match, case-insensitive). Server-side (`ingredients=` param) with 3 tests.
+- **Planned-but-not-shopped nudge (Plan)**: a quiet line shows how many
+  planned recipes still have un-checked-off items on the grocery list,
+  linking straight to the list.
+
+### Fixed — single-household auth hardening
+- **Login brute-force lockout**: 5 failed attempts for one username within
+  5 minutes → HTTP 429 with `Retry-After` (per-username+IP; clears on a
+  successful login). Tunables in Settings/config (`login_max_attempts`,
+  `login_window_seconds`).
+- **Security headers on every response**: `X-Content-Type-Options: nosniff`,
+  `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`, and a
+  CSP with `frame-ancestors 'none'` — the SPA serves from the same origin,
+  so nothing needed loosening. 4 tests.
+
 ## [0.7.3] — 2026-10-06
 
 ### Added — auto-add ingredients toggle

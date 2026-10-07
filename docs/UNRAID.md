@@ -46,15 +46,26 @@ Open `http://<tower-ip>:3000`. First login creates the admin account + household
 
 ## Updating LaTablée
 
+**Route A — git-clone deploy (recommended with the shell route):**
 ```bash
 cd /mnt/user/appdata/latablee
-git pull
-docker compose build latablee
-docker compose up -d latablee
+./scripts/update.sh
 ```
+One command: pulls latest code, rebuilds, recreates the container, and
+verifies the new version is actually serving.
 
-The image is built from source (there is no Docker Hub image), so never use
-"update stack"/`docker compose pull` alone — with `pull_policy: build` it now
+**Route B — GHCR image (works with the Compose Manager plugin):**
+The compose file supports an image override. In `.env` set:
+```
+LATABLEE_IMAGE=ghcr.io/simpleace15/latablee:latest
+```
+and change the service's `image:` line to `image: ${LATABLEE_IMAGE:-latablee}`.
+Then **Update Stack** in the plugin (or `docker compose pull && docker compose up -d`)
+fetches the CI-validated image GitHub just published — no git, no local build.
+Every published image has already passed the full test suite on GitHub.
+
+The image is built from source by default (there is no Docker Hub image), so never use
+"update stack"/`docker compose pull` alone with the local-build setup — with `pull_policy: build` it now
 falls back to building instead of erroring.
 
 ### Optional: Postgres instead of SQLite
@@ -84,6 +95,28 @@ docker compose --profile seed run --rm seed
   editing the compose file to bind-mount `/mnt/user/appdata/latablee/data:/srv/latablee/data`).
 - In-app backups: Settings → **Download backup** (zip with DB + images) and
   **Restore from backup** — works across machines, logins included.
+
+### Scheduled backups (cron-friendly)
+
+`GET /api/export/archive/cron?token=<device-token>` returns the same full backup
+zip, authenticated by a device token (Settings → Device tokens → create one
+named e.g. "Nightly Backup"). Unraid User Scripts job (Schedule: Cron nightly,
+e.g. `0 3 * * *`):
+
+```bash
+#!/bin/bash
+TOKEN="lat_paste-your-device-token-here"
+OUT="/mnt/user/backups/latablee"
+mkdir -p "$OUT"
+curl -fsS "http://localhost:3000/api/export/archive/cron?token=$TOKEN" \
+  -o "$OUT/latablee-backup-$(date +%Y%m%d-%H%M%S).zip"
+# keep the newest 14, remove older
+ls -1t "$OUT"/latablee-backup-*.zip | tail -n +15 | xargs -r rm -f
+```
+
+Set `OUT` to a share that's included in your normal backup routine. Tokens can
+be revoked anytime in Settings (the job then fails loudly instead of silently
+backing up nothing).
 
 ## Home Assistant connector (repo 2)
 

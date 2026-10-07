@@ -43,6 +43,7 @@ export default function PlanPage() {
   const [entries, setEntries] = useState<PlanEntry[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [weekStart, setWeekStart] = useState<string>("");
+  const [shoppedCount, setShoppedCount] = useState<number | null>(null);
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickDate, setPickDate] = useState(todayISO());
@@ -64,10 +65,17 @@ export default function PlanPage() {
   const load = useCallback(async (start?: string) => {
     setLoading(true);
     try {
-      const [plan, recipesRes] = await Promise.all([api.plan(start, 7), api.recipes()]);
+      const [plan, recipesRes, listsRes] = await Promise.all([api.plan(start, 7), api.recipes(), api.lists()]);
       setEntries(plan.entries ?? []);
       setRecipes(recipesRes);
       setWeekStart(plan.start);
+      // planned-but-not-shopped indicator: open list items traced to planned recipes
+      const allItems = listsRes.flatMap((l) => l.items ?? []);
+      const openFrom = new Set<number>();
+      for (const i of allItems) {
+        if (!i.done) for (const rid of i.from_recipe_ids ?? []) openFrom.add(rid);
+      }
+      setShoppedCount(openFrom.size);
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't load");
@@ -209,6 +217,14 @@ export default function PlanPage() {
           </Button>
         </div>
       </header>
+
+      {/* Shopping status: how many planned recipes still have unshopped items */}
+      {shoppedCount !== null && shoppedCount > 0 && (
+        <p className="mb-3 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+          🛒 Ingredients for <b>{shoppedCount}</b> planned {shoppedCount === 1 ? "recipe" : "recipes"} still
+          on the grocery list — <a href="/list" className="underline" style={{ color: "var(--color-primary)" }}>check them off as you shop</a>.
+        </p>
+      )}
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <span className="text-sm font-semibold" style={{ color: "var(--color-muted-foreground)" }}>

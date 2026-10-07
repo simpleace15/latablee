@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "LaTablée"
-    version: str = "0.7.3"
+    version: str = "0.7.4"
     api_v1_prefix: str = "/api/v1"
     debug: bool = False
 
@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     argon2_time_cost: int = 3
     argon2_memory_cost: int = 65536  # 64 MiB
     argon2_parallelism: int = 2
+    # Login brute-force guard (single-household, LAN-facing instance):
+    # N failed attempts per username+IP within the window → 429 until it passes.
+    login_max_attempts: int = 5
+    login_window_seconds: int = 300
 
     # CORS — comma-separated origins, no wildcard by default
     cors_origins: str = "http://localhost:3000"

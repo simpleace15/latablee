@@ -3,7 +3,7 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
@@ -72,14 +72,27 @@ def register(payload: RegisterRequest, session: Session = Depends(get_session)) 
 
 @router.post("/token")
 def login(
+    request: Request,
     form: Annotated[OAuth2PasswordRequestForm, Depends()],
     session: Annotated[Session, Depends(get_session)],
 ) -> dict:
     username = form.username.strip()
+    ip = request.client.host if request.client else "unknown"
+    from app.services import login_guard
+
+    retry_after = login_guard.is_locked(ip, username)
+    if retry_after:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            f"Too many failed attempts — try again in {retry_after}s",
+            headers={"Retry-After": str(retry_after)},
+        )
     all_users = session.exec(select(User)).all()
     user = next((u for u in all_users if u.name.casefold() == username.casefold()), None)
     if user is None or user.disabled or not verify_password(form.password, user.password_hash):
+        login_guard.record_failure(ip, username)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong name or password")
+    login_guard.clear(ip, username)
     token = create_access_token(user)
     return {"access_token": token, "token_type": "bearer"}
 

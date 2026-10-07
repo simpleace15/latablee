@@ -140,3 +140,38 @@ export function Spinner({ label = "Loading…" }: { label?: string }) {
     </div>
   );
 }
+
+/** iOS-style toggle switch. 48px-wide target via the wrapping label. */
+export function Toggle({ checked, onChange, label, hint }: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  label: string;
+  hint?: string;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center justify-between gap-3">
+      <span className="min-w-0">
+        <span className="block text-base font-semibold">{label}</span>
+        {hint && (
+          <span className="block text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+            {hint}
+          </span>
+        )}
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        onClick={() => onChange(!checked)}
+        className="relative h-7 w-12 shrink-0 rounded-full transition-colors"
+        style={{ background: checked ? "var(--color-primary)" : "var(--color-border)" }}
+      >
+        <span
+          className="absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all"
+          style={{ left: checked ? 26 : 4 }}
+        />
+      </button>
+    </label>
+  );
+}

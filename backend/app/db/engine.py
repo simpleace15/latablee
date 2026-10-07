@@ -68,7 +68,8 @@ def _migrate_sqlite_columns(engine) -> None:
     insp = inspect(engine)
     additions: dict[str, list[tuple[str, str]]] = {
         "recipe": [("is_favorite", "INTEGER NOT NULL DEFAULT 0")],
-        "household": [("planning_rules", "JSON")],
+        "household": [("planning_rules", "JSON"),
+                      ("auto_add_to_list", "INTEGER")],  # NULL = default ON
         "mealplanentry": [("servings", "INTEGER")],
     }
     with engine.connect() as conn:

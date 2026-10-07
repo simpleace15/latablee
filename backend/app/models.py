@@ -2,7 +2,7 @@
 from datetime import UTC, date, datetime
 from typing import Any
 
-from sqlalchemy import JSON, Column
+from sqlalchemy import JSON, Boolean, Column
 from sqlmodel import Field, SQLModel
 
 
@@ -34,6 +34,9 @@ class Household(TimestampMixin, SQLModel, table=True):
     # Free-text planning rules fed to the AI planner, e.g. "only 1 chicken meal a week",
     # "don't repeat any meals from the last 2 weeks" — variety knobs (0.5.1).
     planning_rules: list[str] | None = Field(default=None, sa_column=Column(JSON))
+    # Planner AI lands meals → their ingredients auto-flow onto the default shopping
+    # list. ON by default (permissive); Settings toggle turns it off (0.7.3).
+    auto_add_to_list: bool | None = Field(default=None, sa_column=Column(Boolean))
     things_to_remember: str = ""
     onboarded_at: datetime | None = None
 

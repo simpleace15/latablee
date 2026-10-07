@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { api, type Household, type User } from "@/lib/api";
-import { Button, Card, Input, Spinner } from "@/components/ui";
+import { Button, Card, Input, Spinner, Toggle } from "@/components/ui";
 import AppLayout from "../AppLayout";
 import { Bot, CalendarDays, Database, Download, KeyRound, Link2, LogOut, Moon, PackageOpen, RotateCcw, Sun, Trash2, Users } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -32,6 +32,7 @@ export default function SettingsPage() {
   // llm settings
   const [prefsDraft, setPrefsDraft] = useState<{ allergies: string; dislikes: string }>({ allergies: "", dislikes: "" });
   const [rulesDraft, setRulesDraft] = useState("");
+  const [autoAddList, setAutoAddList] = useState(true);
   const [tokens, setTokens] = useState<{ id: number; name: string; created_at: string; last_used_at: string | null; revoked: boolean }[]>([]);
   const [newTokenName, setNewTokenName] = useState("");
   const [newTokenRaw, setNewTokenRaw] = useState("");
@@ -64,6 +65,7 @@ export default function SettingsPage() {
         dislikes: (h.dislikes ?? []).join(", "),
       });
       setRulesDraft((h.planning_rules ?? []).join("\n"));
+      setAutoAddList(h.auto_add_to_list !== false);
       api.tokens().then((res) => setTokens(res.tokens)).catch(() => {});
         if (u.role === "admin") {
           try {
@@ -134,6 +136,7 @@ export default function SettingsPage() {
         allergies: parse(prefsDraft.allergies),
         dislikes: parse(prefsDraft.dislikes),
         planning_rules: rulesDraft.split("\n").map((x) => x.trim()).filter(Boolean),
+        auto_add_to_list: autoAddList,
       });
       setPrefsSaved(true);
       setTimeout(() => setPrefsSaved(false), 2000);
@@ -516,6 +519,14 @@ export default function SettingsPage() {
           placeholder={"Only 1 chicken meal per week\nDon\u0027t repeat any meals from the last 2 weeks\nMeatless on Wednesdays"}
           aria-label="Planning rules for the meal planner"
         />
+        <div className="mt-3 border-t pt-3" style={{ borderColor: "var(--color-border)" }}>
+          <Toggle
+            checked={autoAddList}
+            onChange={setAutoAddList}
+            label="Auto-add ingredients to the shopping list"
+            hint="When AI plans meals (Regenerate, Refill week, saving its suggestions), their ingredients go onto Groceries automatically. Existing items merge — nothing is deleted."
+          />
+        </div>
         <div className="mt-3">
           <Button onClick={() => void savePrefs()}>{prefsSaved ? "Saved ✓" : "Save preferences"}</Button>
         </div>

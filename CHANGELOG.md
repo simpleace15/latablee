@@ -3,6 +3,20 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.7.3] — 2026-10-06
+
+### Added — auto-add ingredients toggle
+- **Settings → Food preferences has a new toggle: "Auto-add ingredients to
+  the shopping list"** — default ON. When AI plans meals (Refill week,
+  Regenerate, saving one of its suggestions), those recipes' ingredients
+  flow onto the Groceries list automatically, merged with existing lines
+  (quantities consolidate; nothing already on the list is deleted).
+  Flip the toggle off and planning leaves your lists alone. The refill
+  response reports `list_added` (the number of lines it pushed), and the
+  toggle rides the household profile so every user in the house shares it.
+- 5 new tests (on-by-default roundtrip, refill-with/without, save-proposal,
+  no-double-stack) — 98 total.
+
 ## [0.7.2] — 2026-10-06
 
 ### Fixed

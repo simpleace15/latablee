@@ -268,6 +268,7 @@ def refill_week(
 
     by_title = {r.title.casefold(): r for r in recipes}
     filled: list[dict] = []
+    filled_recipes: list[Recipe] = []
     proposals: list[dict] = []
     for pick in plan.get("picks", [])[: len(empty)]:
         date_iso = pick.get("date", "")
@@ -282,13 +283,23 @@ def refill_week(
             session.add(entry)
             filled.append({"date": date_iso, "slot": slot, "recipe_id": match.id,
                            "title": match.title, "why": pick.get("why", "")})
+            if match not in filled_recipes:
+                filled_recipes.append(match)
         else:
             proposals.append({"date": date_iso, "slot": slot, "from_book": False,
                               "title": title, "why": pick.get("why", ""),
                               "recipe": pick.get("recipe")})
     session.commit()
     record_event(session, "meal_plan_updated", {"refilled": len(filled), "cleared": len(cleared)})
-    return {"filled": filled, "proposals": proposals, "cleared": cleared}
+    # Toggle ON → the meals the AI just planned send their ingredients to the list
+    # (additive: consolidate with existing lines, never delete).
+    list_added = 0
+    from app.services import auto_list as _auto
+
+    if filled_recipes and _auto.auto_add_enabled(session, user):
+        list_added = _auto.add_recipe_ingredients(session, user, filled_recipes)
+    return {"filled": filled, "proposals": proposals, "cleared": cleared,
+            "list_added": list_added}
 
 
 @router.post("/save-proposal")
@@ -329,6 +340,12 @@ def save_proposal(
         session.add(entry)
         session.commit()
         planned = True
+    # Toggle ON → the saved dish's ingredients join the default list too (same
+    # funnel as refill; planned or not — once it's in the book it's real food).
+    from app.services import auto_list as _auto
+
+    if _auto.auto_add_enabled(session, user):
+        _auto.add_recipe_ingredients(session, user, [r])
     return {**_recipe_out(r), "planned": planned}
 
 

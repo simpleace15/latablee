@@ -90,6 +90,7 @@ export interface Household {
   dislikes: string[] | null;
   favorites: string[] | null;
   planning_rules: string[] | null;
+  auto_add_to_list: boolean;
   things_to_remember: string;
 }
 

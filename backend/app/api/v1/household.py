@@ -20,7 +20,15 @@ class HouseholdIn(BaseModel):
     dislikes: list[str] | None = None
     favorites: list[str] | None = None
     planning_rules: list[str] | None = None
+    # Ingredients of AI-planned meals flow onto the default shopping list (0.7.3).
+    # None in JSON = "leave as is"; NULL in DB = default ON.
+    auto_add_to_list: bool | None = None
     things_to_remember: str = ""
+
+
+# DB NULL means "never set" → behave as ON (permissive default, Tyler's ask).
+def _auto_add(h: Household | None) -> bool:
+    return True if h is None or h.auto_add_to_list is None else bool(h.auto_add_to_list)
 
 
 @router.post("/onboard")
@@ -41,6 +49,8 @@ def onboard(
         allergies=payload.allergies or [],
         dislikes=payload.dislikes or [],
         favorites=payload.favorites or [],
+        planning_rules=payload.planning_rules,
+        auto_add_to_list=payload.auto_add_to_list if payload.auto_add_to_list is not None else None,
         things_to_remember=payload.things_to_remember,
         onboarded_at=utcnow(),
     )
@@ -63,6 +73,7 @@ def get_household(
             "dietary_preferences": h.dietary_preferences, "allergies": h.allergies,
             "dislikes": h.dislikes, "favorites": h.favorites,
             "planning_rules": h.planning_rules or [],
+            "auto_add_to_list": _auto_add(h),
             "things_to_remember": h.things_to_remember}
 
 
@@ -84,9 +95,11 @@ def update_household(
     h.dislikes = payload.dislikes if payload.dislikes is not None else h.dislikes
     h.favorites = payload.favorites if payload.favorites is not None else h.favorites
     h.planning_rules = payload.planning_rules if payload.planning_rules is not None else h.planning_rules
+    h.auto_add_to_list = payload.auto_add_to_list if payload.auto_add_to_list is not None else h.auto_add_to_list
     h.things_to_remember = payload.things_to_remember if payload.things_to_remember is not None else h.things_to_remember
     session.add(h)
     session.commit()
     session.refresh(h)
     return {"id": h.id, "name": h.name, "timezone": h.timezone,
-            "planning_rules": h.planning_rules or []}
+            "planning_rules": h.planning_rules or [],
+            "auto_add_to_list": _auto_add(h)}

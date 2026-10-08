@@ -353,7 +353,7 @@ export const api = {
     method: "POST",
     body: JSON.stringify(payload),
   }),
-  discoverIdeas: (payload?: { count?: number; craving?: string }) =>
+  discoverIdeas: (payload?: { count?: number; craving?: string; protein?: string; cuisine?: string; max_minutes?: number; surprise?: boolean }) =>
     request<{ ideas: Array<Partial<Recipe> & { cuisine?: string; why?: string }> }>(
       "/llm/discover",
       { method: "POST", body: JSON.stringify(payload ?? {}) },

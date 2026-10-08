@@ -78,3 +78,39 @@ def test_ics_line_folding():
     folded = _fold(long)
     for line in folded.split("\r\n"):
         assert len(line.encode("utf-8")) <= 75
+
+
+def test_discover_preferences_and_surprise(client, admin, monkeypatch):
+    """Preference filters + surprise mode steer the prompt, not just craving."""
+    from app.services import llm_client as mod
+
+    captured: dict[str, str] = {}
+
+    def fake_chat(prompt: str, json_mode: bool = False, image_b64=None) -> str:
+        captured["prompt"] = prompt
+        return json.dumps({"ideas": [
+            {"title": "Green Curry", "cuisine": "Thai", "why": "steered", "servings": 4,
+             "ingredients": [{"name": "chicken", "quantity": 1, "unit": "lb"}],
+             "instructions": ["Simmer"]},
+        ]})
+
+    monkeypatch.setattr(mod, "llm_configured", lambda: True)
+    monkeypatch.setattr(mod, "chat", fake_chat)
+    res = client.post("/api/v1/llm/discover", headers=admin, json={
+        "count": 2, "protein": "chicken", "cuisine": "Thai", "max_minutes": 30,
+    })
+    assert res.status_code == 200, res.text
+    p = captured["prompt"]
+    assert "chicken" in p and "Thai" in p and "at most 30 minutes" in p
+
+    # surprise with no prefs picks a random brief server-side
+    res = client.post("/api/v1/llm/discover", headers=admin, json={"surprise": True})
+    assert res.status_code == 200, res.text
+    assert "protein" in captured["prompt"].lower() or "Cuisine" in captured["prompt"]
+
+
+def test_discover_no_ai_fails_gracefully(client, admin, monkeypatch):
+    from app.services import llm_client as mod
+    monkeypatch.setattr(mod, "llm_configured", lambda: False)
+    res = client.post("/api/v1/llm/discover", headers=admin, json={"surprise": True})
+    assert res.status_code == 409

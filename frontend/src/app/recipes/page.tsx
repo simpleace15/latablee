@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { api, type Recipe } from "@/lib/api";
 import { useElapsedTimer } from "@/lib/useElapsedTimer";
-import { Button, Card, Chip, EmptyState, Spinner } from "@/components/ui";
+import { Button, Card, Chip, EmptyState, Input, Spinner } from "@/components/ui";
 import AppLayout from "../AppLayout";
-import { ChefHat, Heart, Plus, Search, Sparkles } from "lucide-react";
+import { ChefHat, Heart, Plus, Search, Shuffle, Sparkles } from "lucide-react";
 
 export default function RecipesPage() {
   const [loading, setLoading] = useState(true);
@@ -20,6 +20,14 @@ export default function RecipesPage() {
   const [ideaBusy, setIdeaBusy] = useState(false);
   const ideaElapsed = useElapsedTimer(ideaBusy);
   const [savingId, setSavingId] = useState("");
+  // Discover preferences popover
+  const [ideaOpen, setIdeaOpen] = useState(false);
+  const [prefProtein, setPrefProtein] = useState("");
+  const [prefCuisine, setPrefCuisine] = useState("");
+  const [prefMaxMin, setPrefMaxMin] = useState("");
+  const [prefCraving, setPrefCraving] = useState("");
+  const ideaPopRef = useRef<HTMLDivElement | null>(null);
+  const [savedToast, setSavedToast] = useState<{ title: string; id: number | string | null } | null>(null);
 
   const load = useCallback(async (query: string, tag: string, ing: string) => {
     setLoading(true);
@@ -51,10 +59,11 @@ export default function RecipesPage() {
 
   const allTags = Array.from(new Set(recipes.flatMap((r) => r.tags))).sort();
 
-  async function findIdeas() {
+  async function findIdeas(extra: { count?: number; craving?: string; protein?: string; cuisine?: string; max_minutes?: number; surprise?: boolean } = {}) {
     setIdeaBusy(true);
+    setIdeaOpen(false);
     try {
-      const res = await api.discoverIdeas({ count: 3 });
+      const res = await api.discoverIdeas({ count: 3, ...extra });
       setIdeas(res.ideas ?? []);
       setError("");
     } catch (err) {
@@ -67,8 +76,11 @@ export default function RecipesPage() {
   async function addToBook(i: number, idea: Partial<Recipe>) {
     setSavingId(String(i));
     try {
-      await api.saveProposal({ recipe: idea });
+      const saved = await api.saveProposal({ recipe: idea });
       setIdeas((cur) => cur.filter((_, idx) => idx !== i));
+      // brief confirmation toast with the recipe name + a link so the save is visible
+      setSavedToast({ title: saved.title ?? idea.title ?? "Saved", id: saved.id ?? null });
+      window.setTimeout(() => setSavedToast(null), 6000);
       void load(q, activeTag, haveList); // the book grew — refresh
     } catch {
       /* keep card; surfaced by state reset */
@@ -81,8 +93,8 @@ export default function RecipesPage() {
     <AppLayout>
       <header className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl">Recipes</h1>
-        <div className="flex gap-2">
-          <Button variant="ghost" onClick={() => void findIdeas()} disabled={ideaBusy}>
+        <div className="relative flex gap-2">
+          <Button variant="ghost" onClick={() => setIdeaOpen((o) => !o)} disabled={ideaBusy} aria-expanded={ideaOpen}>
             <Sparkles size={18} aria-hidden /> {ideaBusy ? `Thinking… ${ideaElapsed}s` : "Find something new"}
           </Button>
           <Link href="/recipes/new/" className="pressable">
@@ -90,10 +102,73 @@ export default function RecipesPage() {
               <Plus size={18} aria-hidden /> Add
             </Button>
           </Link>
+          {ideaOpen && (
+            <div
+              ref={ideaPopRef}
+              className="absolute right-0 top-11 z-20 w-72 rounded-[var(--radius-card)] border p-4 shadow-lg"
+              style={{ borderColor: "var(--color-border)", background: "var(--color-card)" }}
+              role="dialog"
+              aria-label="Find something new preferences"
+            >
+              <p className="mb-3 font-heading text-sm font-semibold">Steer the hunt (all optional)</p>
+              <div className="flex flex-col gap-2.5">
+                <Input label="Main protein / star" value={prefProtein} onChange={(e) => setPrefProtein(e.target.value)}
+                  placeholder="chicken, tofu, shrimp…" />
+                <Input label="Cuisine" value={prefCuisine} onChange={(e) => setPrefCuisine(e.target.value)}
+                  placeholder="Thai, Cajun, Italian…" />
+                <Input label="Max total minutes" value={prefMaxMin} onChange={(e) => setPrefMaxMin(e.target.value)}
+                  inputMode="numeric" placeholder="30" />
+                <Input label="Craving (optional)" value={prefCraving} onChange={(e) => setPrefCraving(e.target.value)}
+                  placeholder="something smoky and light" />
+                <div className="mt-1 flex items-center gap-2">
+                  <Button
+                    onClick={() => {
+                      const minutes = parseInt(prefMaxMin, 10);
+                      void findIdeas({
+                        protein: prefProtein || undefined,
+                        cuisine: prefCuisine || undefined,
+                        max_minutes: Number.isFinite(minutes) && minutes > 0 ? minutes : undefined,
+                        craving: prefCraving || undefined,
+                      });
+                    }}
+                    disabled={ideaBusy}
+                  >
+                    <Sparkles size={16} aria-hidden /> Find ideas
+                  </Button>
+                  <Button variant="ghost" onClick={() => void findIdeas({ surprise: true })} disabled={ideaBusy}>
+                    <Shuffle size={16} aria-hidden /> Surprise me
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
       {ideaBusy && <Spinner />}
+      {savedToast && (
+        <div
+          className="mb-4 flex flex-wrap items-center gap-3 rounded-[12px] px-4 py-3 text-sm shadow-md"
+          style={{ background: "var(--color-primary, #2f7d4f)", color: "#fff" }}
+          role="status"
+          aria-live="polite"
+        >
+          <Sparkles size={16} aria-hidden />
+          <span>
+            <b>{savedToast.title}</b> added to the book — and it's on the{" "}
+            <Link href="/list/" className="underline" style={{ color: "inherit" }}>grocery list</Link>{" "}
+            if auto-add is on.
+          </span>
+          {savedToast.id != null && (
+            <Link href={`/recipes/view/?id=${savedToast.id}`} className="ml-auto underline" style={{ color: "inherit" }}>
+              Open recipe
+            </Link>
+          )}
+          <button onClick={() => setSavedToast(null)} aria-label="Dismiss confirmation" style={{ color: "inherit" }}>
+            ✕
+          </button>
+        </div>
+      )}
       {ideas.length > 0 && (
         <Card className="mb-4 p-4">
           <div className="mb-2 flex items-center gap-2">

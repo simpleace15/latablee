@@ -142,6 +142,11 @@ def discover_new(
 ) -> dict:
     """AI proposes dishes NOT in the recipe book yet — variety hunting.
 
+    Optional preference filters (all free-text-friendly, none required):
+    protein, cuisine, max_minutes, craving. When only craving is set the old
+    behavior results; when any preference is set they steer the proposal.
+    Surprise mode: send {"surprise": true} for a random-styled brief.
+
     Returns full recipe drafts; saving is a separate explicit call
     (POST /llm/save-proposal) so nothing lands in the book unreviewed.
     """
@@ -149,15 +154,38 @@ def discover_new(
         raise HTTPException(409, "No AI endpoint configured — set it in Settings")
     n = max(1, min(int(payload.get("count") or 3), 8))
     want = (payload.get("craving") or "").strip()
+    protein = (payload.get("protein") or "").strip()
+    cuisine = (payload.get("cuisine") or "").strip()
+    max_minutes = payload.get("max_minutes") or None
+    surprise = bool(payload.get("surprise"))
+    if surprise and not (want or protein or cuisine or max_minutes):
+        # dinner roulette, not cryptography — plain random is fine here (S311 silenced inline)
+        import random
+
+        protein = random.choice(["chicken", "beef", "pork", "shrimp", "tofu", "lentils", "white fish"])  # noqa: S311
+        cuisine = random.choice(["Thai", "Italian", "Mexican", "Japanese", "Indian", "Middle Eastern", "Cajun"])  # noqa: S311
+        max_minutes = random.choice([30, 45])  # noqa: S311
     titles = [r.title for r in session.exec(select(Recipe).where(Recipe.household_id == user.household_id)).all()]
     h = session.get(Household, user.household_id)
     existing = ", ".join(titles) if titles else "(your book is empty)"
     rules = "; ".join(h.planning_rules or [])
+    prefs = []
+    if protein:
+        prefs.append(f"Main protein/star ingredient: {protein}.")
+    if cuisine:
+        prefs.append(f"Cuisine: {cuisine}.")
+    if max_minutes:
+        prefs.append(f"Total time must be at most {max_minutes} minutes.")
+    if want:
+        prefs.append(f"They are craving: {want}.")
+    if surprise and prefs == []:
+        prefs.append("Surprise them with something unexpected but weeknight-friendly.")
+    pref_text = " ".join(prefs)
     prompt = (
         f"Propose {n} dinner ideas the household does NOT already have recipes for. "
         f"Their existing recipes (do NOT repeat these): {existing}. "
         + (f"Additional rules: {rules}. " if rules else "")
-        + (f"They are craving: {want}. " if want else "")
+        + (f"{pref_text} " if pref_text else "")
         + "Vary cuisine and protein across the ideas. "
         'Reply ONLY with JSON: {"ideas": [{"title": string, "description": string, '
         '"cuisine": string, "why": string, "servings": number, "prep_minutes": number, '

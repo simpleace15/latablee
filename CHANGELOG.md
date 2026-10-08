@@ -6,6 +6,13 @@ All notable changes to LaTablée are documented here. Format based on
 ## [0.7.4] — 2026-10-07
 
 ### Fixed — backup round-trip & migration card
+- **LaTablée JSON exports now import too**: "Download JSON export" (bare
+  snapshot JSON) previously reported "Found 0 recipes, 1 skipped" on the
+  migration card — only the backup zip was understood. The envelope
+  (`{"recipes": [...]}`) is now detected and imported additively, deduped
+  by title (format shows `latablee-export`). Photos need the backup zip;
+  the JSON export carries recipes only. Schema.org single-recipe JSON
+  files still work unchanged. 5 tests.
 - **LaTablée backups now import**: the "Import from Mealie or other apps"
   card accepted only Mealie/JSON formats — uploading your own backup zip
   (e.g. moving prod → a new install) failed with 422 "No recipes found".

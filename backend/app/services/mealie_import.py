@@ -301,6 +301,12 @@ def _parse_json_file(name: str, data: bytes) -> dict:
         payload = json.loads(text)
     except json.JSONDecodeError as e:
         raise ValueError(f"Invalid JSON: {e}") from e
+
+    # LaTablée's own "Download JSON export" (full snapshot: household/users/plan/lists/recipes)
+    # or a bare {"recipes": [...]} slice of one — import its recipes additively.
+    if isinstance(payload, dict) and isinstance(payload.get("recipes"), list):
+        return _parse_latablee_export(payload)
+
     raw = payload if isinstance(payload, list) else [payload]
     recipes, skipped = [], 0
     for item in raw:
@@ -313,3 +319,35 @@ def _parse_json_file(name: str, data: bytes) -> dict:
             continue
         recipes.append(conv)
     return {"recipes": recipes[:MAX_ENTRIES], "images": {}, "skipped": skipped, "format": "json-file"}
+
+
+def _parse_latablee_export(payload: dict) -> dict:
+    """Full JSON export shape — same row mapping as _parse_latablee_backup, minus images
+    (a bare JSON export carries no photo bytes; use the backup zip for photos)."""
+    recipes: list[dict] = []
+    skipped = 0
+    seen: set[str] = set()
+    for item in payload.get("recipes", [])[:MAX_ENTRIES]:
+        if not isinstance(item, dict):
+            skipped += 1
+            continue
+        title = (item.get("title") or "").strip()
+        if not title or title.casefold() in seen:
+            skipped += 1
+            continue
+        seen.add(title.casefold())
+        recipes.append({
+            "title": title,
+            "description": item.get("description") or "",
+            "servings": item.get("servings") or 4,
+            "prep_minutes": item.get("prep_minutes"),
+            "cook_minutes": item.get("cook_minutes"),
+            "instructions": [str(x) for x in (item.get("instructions") or [])],
+            "ingredients": item.get("ingredients") or [],
+            "tags": item.get("tags") or [],
+            "source_url": item.get("source_url"),
+            "source_name": item.get("source_name"),
+        })
+    if not recipes:
+        raise ValueError("Export contains no recipes")
+    return {"recipes": recipes, "images": {}, "skipped": skipped, "format": "latablee-export"}

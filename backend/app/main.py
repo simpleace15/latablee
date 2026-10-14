@@ -112,13 +112,18 @@ app.include_router(api_router, prefix=get_settings().api_v1_prefix)
 # Empty LATABLEE_STATIC_DIR (two-container nginx mode) disables it.
 # Registered LAST so the catch-all never shadows API routes above.
 if STATIC_DIR is not None:
-    from fastapi.responses import FileResponse, RedirectResponse
+    from fastapi.responses import FileResponse
 
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
 
     @app.get("/", include_in_schema=False)
-    def _root() -> RedirectResponse:
-        return RedirectResponse(url="/static/index.html")
+    def _root() -> FileResponse:
+        # Serve the SPA shell directly instead of redirecting to /static/index.html:
+        # a 307's Location header can't carry a per-session path prefix, so behind
+        # path-prefix proxies (Home Assistant ingress, reverse-proxy subpaths) the
+        # browser resolves /static/index.html against the proxy host root and the
+        # page never loads.
+        return FileResponse(STATIC_DIR / "index.html")
 
     # SPA fallback: non-API GET without a file → the SPA shell (client router takes over).
     # Next.js static export writes directory indexes (settings/index.html, trailingSlash mode),

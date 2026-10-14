@@ -3,6 +3,14 @@
 All notable changes to LaTablée are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: SemVer.
 
+## [0.7.5] — 2026-10-14
+
+### Fixed — blank page behind path-prefix proxies (HA ingress)
+- `GET /` serves the SPA shell (`static/index.html`) directly instead of a 307 redirect.
+  The redirect's `Location` header resolved `/static/index.html` against the proxy host
+  root, so through Home Assistant ingress (and any reverse-proxy subpath) the page never
+  loaded.
+
 ## [0.7.4] — 2026-10-07
 
 ### Fixed — backup round-trip & migration card
